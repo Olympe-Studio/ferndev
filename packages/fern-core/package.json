@@ -1,9 +1,32 @@
 {
-  "name": "fern-core",
+  "name": "@fern/core",
+  "version": "1.0.0",
+  "description": "Core browser features to work with the Fern Framework",
+  "main": "index.ts",
+  "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
+  "license": "MIT",
   "module": "index.ts",
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/fern_core.mjs",
+      "require": "./dist/fern_core.umd.js"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "prepack": "pnpm build",
+    "preview": "vite preview"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "vite": "^5.4.10",
+    "vite-plugin-dts": "^4.3.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
