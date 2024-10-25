@@ -1,0 +1,16 @@
+{
+  "name": "@fern/framework",
+  "private": true,
+  "module": "index.ts",
+  "type": "module",
+  "workspaces": [
+    "packages/fern-core",
+    "packages/fern-astro"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
