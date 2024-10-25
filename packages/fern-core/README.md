@@ -55,7 +55,6 @@ class HomePageController extends Singleton implements Controller {
    *
    * @return Reply
    */
-  #[Nonce(actionName: 'say_hello_world')]
   public function sayHelloWorld(Request $request): Reply {
     $action = $request->getAction();
     $greeting = $action->get('greeting');
@@ -81,7 +80,6 @@ const sayHelloWorld = async () => {
   console.log('Fern is saying: ', data?.msg);
 };
 ```
-
 
 ## Securing actions
 
