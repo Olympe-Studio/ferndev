@@ -5,7 +5,7 @@
   "type": "module",
   "workspaces": [
     "packages/fern-core",
-    "packages/fern-astro"
+    "packages/fern-woo"
   ],
   "devDependencies": {
     "@types/bun": "latest"
