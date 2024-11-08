@@ -3,12 +3,12 @@ import { Cart, ShopConfig } from "./types"
 
 export const $cart = map<Cart>({
   items: [],
-  subtotal: 0,
-  total: 0,
+  subtotal: "0",
+  total: "0",
   item_count: 0,
-  tax_total: 0,
+  tax_total: "0",
   needs_shipping: false,
-  shipping_total: 0
+  shipping_total: "0"
 })
 
 // Computed values

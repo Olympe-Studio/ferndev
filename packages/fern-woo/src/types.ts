@@ -1,3 +1,11 @@
+export interface Price {
+  regular_price: string
+  sale_price: string | null
+  price: string
+  sale_amount: number | null
+  is_on_sale: boolean
+  currency: string
+}
 
 export interface CartItem {
   key: string
@@ -5,10 +13,11 @@ export interface CartItem {
   product_id: number
   variation_id?: number
   name: string
-  price: number
+  short_description: string
   quantity: number
-  subtotal: number
-  total: number
+  price: Price
+  subtotal: string
+  total: string
   variation: CartItemVariation
   image?: string
   productData: CartItemData
@@ -20,13 +29,13 @@ export interface CartItemVariation {
 
 export interface CartItemData {
   variations: {
-    id: number,
-    attributes: CartItemVariation,
-    price: string,
-    min_quantity: number | "",
-    max_quantity: number | "",
-    is_in_stock: boolean,
-  }[],
+    id: number
+    attributes: CartItemVariation
+    price: Price
+    min_quantity: number | ""
+    max_quantity: number | ""
+    is_in_stock: boolean
+  }[]
   attributes: {
     [key: string]: {
       name: string
@@ -37,12 +46,12 @@ export interface CartItemData {
 
 export interface Cart {
   items: CartItem[]
-  subtotal: number
-  total: number
+  subtotal: string
+  total: string
   item_count: number
-  tax_total: number
+  tax_total: string
   needs_shipping: boolean
-  shipping_total: number
+  shipping_total: string
 }
 
 export interface ShopConfig {
@@ -68,7 +77,6 @@ export interface AddToCartArgs {
   variation?: CartItemVariation
   cartItemKey?: string
 }
-
 
 export interface UpdateCartItemArgs {
   cartItemKey: string
