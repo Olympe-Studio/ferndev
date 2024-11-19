@@ -10,6 +10,9 @@ export interface Price {
 export interface CartItem {
   key: string
   id: number
+  meta_data: {
+    [key: string]: any
+  }
   product_id: number
   variation_id?: number
   name: string
@@ -35,6 +38,9 @@ export interface CartItemData {
     min_quantity: number | ""
     max_quantity: number | ""
     is_in_stock: boolean
+    meta_data: {
+      [key: string]: any
+    }
   }[]
   attributes: {
     [key: string]: {
