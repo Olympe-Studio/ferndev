@@ -1,6 +1,6 @@
 {
   "name": "@fern/woo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "WooCommerce actions to work with the Fern Framework",
   "main": "./src/index.ts",
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
