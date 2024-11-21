@@ -1,8 +1,9 @@
 {
-  "name": "@fern/core",
+  "name": "@ferndev/core",
   "version": "1.0.0",
   "description": "Core browser features to work with the Fern Framework",
   "main": "index.ts",
+  "private": false,
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
   "license": "MIT",
   "module": "./dist/fern_core.js",
@@ -22,7 +23,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "prepack": "pnpm build",
+    "prepack": "bun run build",
     "preview": "vite preview"
   },
   "devDependencies": {

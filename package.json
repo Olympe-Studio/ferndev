@@ -1,6 +1,6 @@
 {
-  "name": "@fern/framework",
-  "private": true,
+  "name": "@ferndev/framework",
+  "private": false,
   "type": "module",
   "main": "./dist/fern_woo.umd.js",
   "module": "./dist/fern_woo.mjs",
