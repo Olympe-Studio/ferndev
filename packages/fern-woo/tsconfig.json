@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "es2017",
+    "isolatedModules": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": [
+      "bun-types" // add Bun global
+    ]
+  },
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../fern-core"
+    }
+  ]
+}

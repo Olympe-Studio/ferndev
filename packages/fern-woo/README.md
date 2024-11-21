@@ -1,16 +1,16 @@
-# @fern/core
+# @fern/woo
 
-A lightweight, type-safe utility for handling client-side actions with the Fern Framework.
+A lightweight, type-safe utility for handling WooCommerce actions with the Fern Framework.
 
 
 ## Installation
 
 ```bash
-bun add @fern/core
+bun add @fern/woo @fern/core
 # or
-npm install @fern/core
+npm install @fern/woo @fern/core
 # or
-yarn add @fern/core
+yarn add @fern/woo @fern/core
 ```
 
 ## Basic Usage

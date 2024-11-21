@@ -3,11 +3,14 @@
     "lib": [
       "ESNext"
     ],
-    "module": "esnext",
+    "module": "NodeNext",
+    "composite": true,
     "target": "esnext",
     "moduleResolution": "nodenext",
     "strict": true,
     "downlevelIteration": true,
+    "outDir": "./dist",
+    "rootDir": ".",
     "skipLibCheck": true,
     "jsx": "preserve",
     "allowSyntheticDefaultImports": true,
@@ -16,5 +19,8 @@
     "types": [
       "bun-types" // add Bun global
     ]
-  }
+  },
+  "include": [
+    "./index.ts"
+  ]
 }

@@ -1,16 +1,27 @@
 {
   "name": "@fern/framework",
   "private": true,
-  "module": "index.ts",
   "type": "module",
+  "main": "./dist/fern_woo.umd.js",
+  "module": "./dist/fern_woo.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/fern_woo.mjs",
+      "require": "./dist/fern_woo.umd.js"
+    }
+  },
   "workspaces": [
-    "packages/fern-core",
-    "packages/fern-astro"
+    "packages/*"
   ],
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.1.13"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.6.3"
   }
 }
