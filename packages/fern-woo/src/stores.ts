@@ -1,5 +1,5 @@
 import { atom, computed, map } from "nanostores"
-import { Cart, ShopConfig } from "./types"
+import { Cart, WooCommerceConfig } from "./types"
 
 export const $cart = map<Cart>({
   items: [],
@@ -19,4 +19,4 @@ export const $cartTaxTotal = computed($cart, cart => cart.tax_total)
 export const $cartShippingTotal = computed($cart, cart => cart.shipping_total)
 
 export const $cartIsLoading = atom(false)
-export const $shopConfig = map<ShopConfig>()
+export const $shopConfig = map<WooCommerceConfig>()
