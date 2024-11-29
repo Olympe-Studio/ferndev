@@ -1,4 +1,4 @@
-import { callAction } from "@fern/core"
+import { callAction } from "@ferndev/core"
 import { $cart, $cartIsLoading, $shopConfig } from "./stores"
 import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs } from "./types"
 
@@ -84,7 +84,7 @@ export const addToCart = async ({
       cart_item_key: cartItemKey
     })
     if (result.status === 'ok' && result.data) {
-      $cart.set({ ...result.data.cart })
+      $cart.set(JSON.parse(JSON.stringify(result.data.cart)))
     }
 
     $cartIsLoading.set(false)

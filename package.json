@@ -8,13 +8,6 @@
   "files": [
     "dist"
   ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/fern_woo.mjs",
-      "require": "./dist/fern_woo.umd.js"
-    }
-  },
   "workspaces": [
     "packages/*"
   ],
