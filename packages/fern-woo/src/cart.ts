@@ -1,6 +1,6 @@
 import { callAction } from "@ferndev/core"
 import { $cart, $cartIsLoading, $shopConfig } from "./stores"
-import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs } from "./types"
+import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, WooCommerceConfig } from "./types"
 
 /**
  * Initialize the cart and shop configuration state.
@@ -323,5 +323,34 @@ export const removeCoupon = async (couponCode: string) => {
   } catch (e) {
     $cartIsLoading.set(false)
     throw e
+  }
+}
+
+/**
+ * Format a price based on the WooCommerce config.
+ *
+ * @param price - The price to format
+ * @param config - The WooCommerce config
+ * @returns The formatted price
+ */
+export function formatPrice(price: number): string {
+  const config = $shopConfig.get();
+  const absolutePrice = Math.abs(price);
+  const formattedNumber = absolutePrice.toFixed(config.price_decimals)
+    .replace('.', config.decimal_separator)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, config.thousand_separator);
+
+  const sign = price < 0 ? '-' : '';
+  switch (config.currency_position) {
+    case 'left':
+      return `${sign}${config.currency_symbol}${formattedNumber}`;
+    case 'right':
+      return `${sign}${formattedNumber}${config.currency_symbol}`;
+    case 'left_space':
+      return `${sign}${config.currency_symbol} ${formattedNumber}`;
+    case 'right_space':
+      return `${sign}${formattedNumber} ${config.currency_symbol}`;
+    default:
+      return `${sign}${config.currency_symbol}${formattedNumber}`;
   }
 }
