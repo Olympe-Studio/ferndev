@@ -1,6 +1,6 @@
 import { callAction } from "@ferndev/core"
 import { $cart, $cartIsLoading, $shopConfig } from "./stores"
-import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, WooCommerceConfig } from "./types"
+import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs } from "./types"
 
 /**
  * Initialize the cart and shop configuration state.
