@@ -8,20 +8,13 @@
   "files": [
     "dist"
   ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/fern_woo.mjs",
-      "require": "./dist/fern_woo.umd.js"
-    }
-  },
   "workspaces": [
     "packages/*"
   ],
   "devDependencies": {
-    "@types/bun": "^1.1.13"
+    "@types/bun": "^1.2.0"
   },
   "peerDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.3"
   }
 }
