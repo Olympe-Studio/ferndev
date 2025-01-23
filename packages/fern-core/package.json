@@ -1,6 +1,6 @@
 {
   "name": "@ferndev/core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Core browser features to work with the Fern Framework",
   "main": "index.ts",
   "private": false,
@@ -27,11 +27,11 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "vite": "^5.4.11",
-    "vite-plugin-dts": "^4.3.0"
+    "@types/bun": "^1.2.0",
+    "vite": "^6.0.11",
+    "vite-plugin-dts": "^4.5.0"
   },
   "peerDependencies": {
-    "typescript": "^5.4.2"
+    "typescript": "^5.7.3"
   }
 }
