@@ -1,12 +1,12 @@
 {
-  "name": "@ferndev/woo",
-  "version": "1.1.0",
-  "description": "WooCommerce actions to work with the Fern Framework",
-  "main": "./src/index.ts",
+  "name": "@ferndev/core",
+  "version": "1.1.1",
+  "description": "Core browser features to work with the Fern Framework",
+  "main": "index.ts",
+  "private": false,
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
   "license": "MIT",
-  "private": false,
-  "module": "./dist/fern_woo.js",
+  "module": "./dist/fern_core.js",
   "type": "module",
   "types": "./dist/index.d.ts",
   "typings": "./dist/index.d.ts",
@@ -15,8 +15,9 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/fern_woo.js",
-      "require": "./dist/fern_woo.umd.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/fern_core.js",
+      "require": "./dist/fern_core.umd.js"
     }
   },
   "scripts": {
@@ -26,16 +27,11 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@ferndev/core": "workspace:*",
     "@types/bun": "^1.2.0",
     "vite": "^6.0.11",
     "vite-plugin-dts": "^4.5.0"
   },
   "peerDependencies": {
-    "typescript": "^5.7.3",
-    "@ferndev/core": "workspace:*"
-  },
-  "dependencies": {
-    "nanostores": "^0.11.3"
+    "typescript": "^5.7.3"
   }
 }

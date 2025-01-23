@@ -13,7 +13,7 @@ export default defineConfig({
       formats: ['es', 'umd']
     },
     rollupOptions: {
-      external: ['typescript', '@fern/core', 'nanostores'],
+      external: ['typescript', '@ferndev/core', 'nanostores'],
     }
   },
   plugins: [dts({
