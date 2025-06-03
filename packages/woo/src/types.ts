@@ -80,6 +80,30 @@ export interface UpdateCartItemArgs {
   variation?: CartItemVariation
 }
 
+export interface BatchAddToCartItem {
+  productId: number
+  quantity?: number
+  variationId?: number
+  variation?: CartItemVariation
+}
+
+export interface BatchAddToCartArgs {
+  items: BatchAddToCartItem[]
+}
+
+export interface BatchItemResult {
+  index: number
+  success: boolean
+  message: string
+  cart_item_key: string | null
+}
+
+export interface BatchAddToCartResponse {
+  success: boolean
+  message: string
+  results: BatchItemResult[]
+  cart: Cart
+}
 
 type WooBoolean = 'yes' | 'no';
 type CurrencyPosition = 'left' | 'right' | 'left_space' | 'right_space';

@@ -1,6 +1,6 @@
 import { callAction } from "@ferndev/core"
 import { $cart, $cartIsLoading, $shopConfig } from "./stores"
-import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs } from "./types"
+import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, BatchAddToCartArgs, BatchAddToCartResponse } from "./types"
 
 /**
  * Initialize the cart and shop configuration state.
@@ -83,6 +83,66 @@ export const addToCart = async ({
       variation,
       cart_item_key: cartItemKey
     })
+    if (result.status === 'ok' && result.data) {
+      $cart.set(JSON.parse(JSON.stringify(result.data.cart)))
+    }
+
+    $cartIsLoading.set(false)
+    return result
+  } catch (e) {
+    $cartIsLoading.set(false)
+    throw e
+  }
+}
+
+/**
+ * Add multiple products to the cart in a single batch operation.
+ * Allows adding multiple products at once with individual success/failure tracking.
+ *
+ * @param items - Array of items to add to cart
+ * @returns A promise that resolves to the batch operation result with individual item results
+ *
+ * @example
+ * Simple batch add:
+ * ```ts
+ * await batchAddToCart({
+ *   items: [
+ *     { productId: 123, quantity: 2 },
+ *     { productId: 456, quantity: 1 }
+ *   ]
+ * })
+ * ```
+ *
+ * @example
+ * Mixed simple and variable products:
+ * ```ts
+ * await batchAddToCart({
+ *   items: [
+ *     { productId: 123, quantity: 2 },
+ *     {
+ *       productId: 456,
+ *       quantity: 1,
+ *       variationId: 789,
+ *       variation: { size: 'large', color: 'red' }
+ *     }
+ *   ]
+ * })
+ * ```
+ */
+export const batchAddToCart = async ({ items }: BatchAddToCartArgs) => {
+  $cartIsLoading.set(true)
+  try {
+    const formattedItems = items.map(item => ({
+      product_id: item.productId,
+      quantity: item.quantity ?? 1,
+      variation_id: item.variationId,
+      variation: item.variation ?? {}
+    }))
+
+    const result = await callAction<BatchAddToCartResponse>('batchAddToCart', {
+      items: formattedItems
+    })
+
     if (result.status === 'ok' && result.data) {
       $cart.set(JSON.parse(JSON.stringify(result.data.cart)))
     }
