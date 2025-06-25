@@ -12,11 +12,11 @@ export const $cart = map<Cart>({
 })
 
 // Computed values
-export const $cartItemsCount = computed($cart, cart => cart.item_count || 0)
-export const $cartTotal = computed($cart, cart => cart.total || "0")
-export const $cartSubtotal = computed($cart, cart => cart.subtotal || "0")
-export const $cartTaxTotal = computed($cart, cart => cart.tax_total || "0")
-export const $cartShippingTotal = computed($cart, cart => cart.shipping_total || "0")
+export const $cartItemsCount = computed($cart, cart => cart?.item_count || 0)
+export const $cartTotal = computed($cart, cart => cart?.total || "0")
+export const $cartSubtotal = computed($cart, cart => cart?.subtotal || "0")
+export const $cartTaxTotal = computed($cart, cart => cart?.tax_total || "0")
+export const $cartShippingTotal = computed($cart, cart => cart?.shipping_total || "0")
 
 export const $cartIsLoading = atom(false)
 export const $shopConfig = map<WooCommerceConfig>()
