@@ -11,10 +11,7 @@
     "declarationMap": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "types": [
-      "bun-types" // add Bun global
-    ]
+    "rootDir": "./src"
   },
   "include": [
     "./src/**/*.ts"
