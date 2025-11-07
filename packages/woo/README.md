@@ -1,152 +1,303 @@
-# @fern/woo
+# @ferndev/woo
 
-A lightweight, type-safe utility for handling WooCommerce actions with the Fern Framework.
+WooCommerce integration library for the Fern PHP framework with reactive state management.
 
+[![Version](https://img.shields.io/npm/v/@ferndev/woo)](https://www.npmjs.com/package/@ferndev/woo)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@ferndev/woo)](https://bundlephobia.com/package/@ferndev/woo)
+[![License](https://img.shields.io/npm/l/@ferndev/woo)](https://github.com/ferndev/woo/blob/main/LICENSE)
+
+## Features
+
+- 🛒 **Cart Management** - Full WooCommerce cart operations
+- 🔄 **Reactive State** - Powered by Nanostores for efficient reactivity
+- 💰 **Price Formatting** - Automatic currency formatting based on shop config
+- 🎫 **Coupon Support** - Apply and remove discount codes
+- ⚡ **Race-Condition Safe** - Handles concurrent operations correctly
+- 🛡️ **Defensive Programming** - Validates quantities and handles edge cases
+- 📝 **Fully Typed** - Complete TypeScript definitions
+- 🪶 **Lightweight** - Only 6.3 KB (1.66 KB gzipped)
 
 ## Installation
 
 ```bash
-bun add @fern/woo @fern/core
+bun add @ferndev/woo @ferndev/core nanostores
 # or
-npm install @fern/woo @fern/core
+npm install @ferndev/woo @ferndev/core nanostores
 # or
-yarn add @fern/woo @fern/core
+yarn add @ferndev/woo @ferndev/core nanostores
 ```
 
-## Basic Usage
+## Quick Start
 
-To use this library, you first need to setup a Controller in your Fern project.
+### 1. Initialize Cart on App Mount
 
-Let's create a simple controller with a single action:
+```typescript
+import { initializeCart } from '@ferndev/woo';
 
-```php
-// App/Controllers/HomePageController.php
-<?php
+// Call once when your app starts
+await initializeCart();
+```
 
-namespace App\Controllers;
+### 2. Use Cart Functions
 
-use Fern\Core\Factory\Singleton;
-use Fern\Core\Services\HTTP\Reply;
-use Fern\Core\Services\Controller\Controller;
-use Fern\Core\Services\HTTP\Request;
+```typescript
+import { addToCart, removeFromCart, $cartItemsCount } from '@ferndev/woo';
 
+// Add product to cart
+const result = await addToCart({
+  productId: 123,
+  quantity: 2
+});
 
-class HomePageController extends Singleton implements Controller {
-  // Id of your HomePage
-  public static string $handle = '4';
+// React to cart changes
+$cartItemsCount.subscribe(count => {
+  console.log(\`Cart has \${count} items\`);
+});
+```
 
-  /**
-   * Handle the request and return a reply.
-   *
-   * @param Request $request
-   * @return Reply
-   */
-  public function handle(Request $request): Reply {
-    return new Reply(200, Views::render('HomePage', [
-      'title' => 'Hello Fern!',
-      'content' => 'Welcome to the Fern Framework!',
-    ]));
-  }
+## API Reference
 
-  /**
-   * An exemple of an action that say Hello World.
-   *
-   * @see https://fern.dev/actions
-   *
-   * @return Reply
-   */
-  public function sayHelloWorld(Request $request): Reply {
-    $action = $request->getAction();
-    $greeting = $action->get('greeting');
+### Cart Operations
 
-    return new Reply(200, [
-      'msg' => "Hello, {$greeting}!",
-    ]);
-  }
+#### \`initializeCart()\`
+
+Initialize cart and shop configuration. **Must be called before any other cart operations.**
+
+```typescript
+await initializeCart();
+```
+
+#### \`addToCart(options)\`
+
+Add a product to the cart.
+
+```typescript
+// Simple product
+await addToCart({
+  productId: 123,
+  quantity: 2
+});
+
+// Variable product
+await addToCart({
+  productId: 456,
+  quantity: 1,
+  variationId: 789,
+  variation: { size: 'large', color: 'blue' }
+});
+```
+
+#### \`batchAddToCart({ items })\`
+
+Add multiple products in one operation.
+
+```typescript
+await batchAddToCart({
+  items: [
+    { productId: 123, quantity: 2 },
+    { productId: 456, quantity: 1, variationId: 789 }
+  ]
+});
+```
+
+#### \`updateQuantity(cartItemKey, quantity)\`
+
+Update item quantity. **Validates quantity and auto-removes if zero.**
+
+```typescript
+await updateQuantity('abc123', 3);  // Set to 3
+await updateQuantity('abc123', 0);  // Removes item
+await updateQuantity('abc123', -1); // Throws error
+```
+
+#### \`removeFromCart(cartItemKey)\`
+
+Remove an item from cart.
+
+```typescript
+await removeFromCart('abc123');
+```
+
+#### \`clearCart()\`
+
+Remove all items from cart.
+
+```typescript
+await clearCart();
+```
+
+#### \`applyCoupon(code)\` / \`removeCoupon(code)\`
+
+Manage discount coupons.
+
+```typescript
+await applyCoupon('SAVE20');
+await removeCoupon('SAVE20');
+```
+
+### Reactive Stores
+
+All stores are Nanostores that you can subscribe to for reactive updates:
+
+```typescript
+import {
+  \$cart,              // Full cart object
+  \$cartItemsCount,    // Number of items
+  \$cartTotal,         // Total amount
+  \$cartSubtotal,      // Subtotal (before tax/shipping)
+  \$cartTaxTotal,      // Total tax
+  \$cartShippingTotal, // Shipping cost
+  \$cartIsLoading,     // Loading state
+  \$shopConfig         // WooCommerce configuration
+} from '@ferndev/woo';
+
+// React to changes
+\$cartItemsCount.subscribe(count => {
+  document.getElementById('cart-badge').textContent = count;
+});
+
+// Get current value
+const currentTotal = \$cartTotal.get();
+```
+
+### Price Formatting
+
+```typescript
+import { formatPrice } from '@ferndev/woo';
+
+// Automatically formats based on shop configuration
+formatPrice(1234.56);  // "$1,234.56" (or €1.234,56 depending on config)
+formatPrice(-10.00);    // "-$10.00"
+```
+
+## Framework Integration
+
+### React / Solid / Preact
+
+```tsx
+import { useStore } from '@nanostores/react'; // or @nanostores/solid, etc.
+import { \$cartItemsCount, addToCart } from '@ferndev/woo';
+
+function CartBadge() {
+  const count = useStore(\$cartItemsCount);
+  
+  return <span className="badge">{count}</span>;
+}
+
+function AddToCartButton({ productId }: { productId: number }) {
+  const handleClick = async () => {
+    await addToCart({ productId, quantity: 1 });
+  };
+  
+  return <button onClick={handleClick}>Add to Cart</button>;
 }
 ```
 
-```ts
-import { callAction } from '@fern/core';
+### Svelte
 
-const sayHelloWorld = async () => {
-  const { data, error, status } = await callAction('sayHelloWorld', { greeting: 'World' });
+```svelte
+<script>
+  import { \$cartItemsCount, addToCart } from '@ferndev/woo';
+</script>
 
-  if (status === 'error') {
-    console.error('Failed to fetch user:', error?.message);
-    return;
-  }
+<div class="cart-badge">{\$cartItemsCount}</div>
 
-  console.log('Fern is saying: ', data?.msg);
-};
+<button on:click={() => addToCart({ productId: 123, quantity: 1 })}>
+  Add to Cart
+</button>
 ```
 
-## Securing actions
+### Vue
 
-Fern actions can be secured using several attributes, one of those is `#[Nonce]` that will automatically check for a valid nonce in the request:
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue';
+import { \$cartItemsCount, addToCart } from '@ferndev/woo';
 
-```php
-// App/Controllers/Auth/MyAccountController.php
-<?php
+const count = useStore(\$cartItemsCount);
+</script>
 
-namespace App\Controllers\Auth;
+<template>
+  <span class="badge">{{ count }}</span>
+  <button @click="addToCart({ productId: 123, quantity: 1 })">
+    Add to Cart
+  </button>
+</template>
+```
 
-use Fern\Core\Factory\Singleton;
-use Fern\Core\Services\HTTP\Reply;
-use Fern\Core\Services\Controller\Controller;
-use Fern\Core\Services\HTTP\Request;
+## Error Handling
 
-class MyAccountController extends Singleton implements Controller {
-  public static string $handle = '5';
+All cart functions throw descriptive errors with context:
 
-  public function handle(Request $request): Reply {
-    return new Reply(200, Views::render('UserProfile', [
-      'title' => 'User Profile',
-      'user' => get_current_user(),
-      'nonce' => wp_create_nonce('update_profile'),
-    ]));
-  }
-
-  /**
-   * Update user profile with secure nonce verification
-   *
-   * @see https://fern.dev/security/nonce
-   *
-   * @return Reply
-   */
-  #[Nonce(actionName: 'update_profile')]
-  public function updateProfile(Request $request): Reply {
-    // Nonce verification is automatically handled by the framework
-    $action = $request->getAction();
-
-    // Get data from request
-    $newData = $action->get('profileData');
-    $id      = $action->get('id');
-
-    try {
-      // Update user profile
-      wp_update_user($id, $newData);
-
-      return new Reply(200, [
-        'success' => true,
-        'message' => 'Profile updated successfully',
-      ]);
-    } catch (\Exception $e) {
-      return new Reply(400, [
-        'success' => false,
-        'message' => 'Failed to update profile',
-      ]);
-    }
-  }
+```typescript
+try {
+  await addToCart({ productId: 123, quantity: 2 });
+} catch (error) {
+  // Error messages are descriptive:
+  // "Failed to add product 123 to cart: Out of stock"
+  console.error(error.message);
+  
+  // Original error preserved in .cause
+  console.error(error.cause);
 }
 ```
 
-And, in the client side you can call the action like this:
+## Concurrent Operations
 
-```ts
-const updateProfile = async (id: string, newData: any, nonce: string) => {
-  const { data, error, status } = await callAction('updateProfile', { nonce, id, newData });
-};
+The library handles concurrent operations safely:
 
-updateProfile('1', { name: 'John Doe' }, 'whateveryournonceis');
+```typescript
+// These can run simultaneously without issues
+await Promise.all([
+  addToCart({ productId: 1, quantity: 1 }),
+  addToCart({ productId: 2, quantity: 1 }),
+  addToCart({ productId: 3, quantity: 1 })
+]);
+
+// Loading state remains true until ALL complete
 ```
+
+## Bundle Size
+
+- **ES Module:** 6.30 KB (1.66 KB gzipped)
+- **UMD Module:** 5.32 KB (1.68 KB gzipped)
+
+## TypeScript
+
+Fully typed with exported interfaces:
+
+```typescript
+import type {
+  Cart,
+  CartItem,
+  WooCommerceConfig,
+  AddToCartArgs,
+  UpdateCartItemArgs
+} from '@ferndev/woo';
+```
+
+## Changelog
+
+### v1.2.0 (2025-01-07)
+
+- 🐛 **CRITICAL FIX:** Fixed TypeError when \`\$shopConfig\` was undefined
+- 🔒 Fixed race conditions in concurrent cart operations
+- ✅ Added quantity validation (prevents negative values)
+- 📝 Added error context to all operations
+- 🛡️ Added defensive checks in \`formatPrice()\`
+- 📚 Added comprehensive JSDoc documentation
+- 📦 Improved bundle size optimization
+
+### v1.1.3 (Previous)
+
+- Initial release with basic cart functionality
+
+## License
+
+MIT © Tanguy Magnaudet
+
+## Links
+
+- [Fern Framework Documentation](https://fern.dev)
+- [@ferndev/core](https://www.npmjs.com/package/@ferndev/core)
+- [Nanostores](https://github.com/nanostores/nanostores)
