@@ -51,7 +51,7 @@ const result = await addToCart({
 
 // React to cart changes
 $cartItemsCount.subscribe(count => {
-  console.log(\`Cart has \${count} items\`);
+  console.log(`Cart has \${count} items`);
 });
 ```
 
@@ -59,7 +59,7 @@ $cartItemsCount.subscribe(count => {
 
 ### Cart Operations
 
-#### \`initializeCart()\`
+#### `initializeCart()`
 
 Initialize cart and shop configuration. **Must be called before any other cart operations.**
 
@@ -67,7 +67,7 @@ Initialize cart and shop configuration. **Must be called before any other cart o
 await initializeCart();
 ```
 
-#### \`addToCart(options)\`
+#### `addToCart(options)`
 
 Add a product to the cart.
 
@@ -87,7 +87,7 @@ await addToCart({
 });
 ```
 
-#### \`batchAddToCart({ items })\`
+#### `batchAddToCart({ items })`
 
 Add multiple products in one operation.
 
@@ -100,7 +100,7 @@ await batchAddToCart({
 });
 ```
 
-#### \`updateQuantity(cartItemKey, quantity)\`
+#### `updateQuantity(cartItemKey, quantity)`
 
 Update item quantity. **Validates quantity and auto-removes if zero.**
 
@@ -110,7 +110,7 @@ await updateQuantity('abc123', 0);  // Removes item
 await updateQuantity('abc123', -1); // Throws error
 ```
 
-#### \`removeFromCart(cartItemKey)\`
+#### `removeFromCart(cartItemKey)`
 
 Remove an item from cart.
 
@@ -118,7 +118,7 @@ Remove an item from cart.
 await removeFromCart('abc123');
 ```
 
-#### \`clearCart()\`
+#### `clearCart()`
 
 Remove all items from cart.
 
@@ -126,7 +126,7 @@ Remove all items from cart.
 await clearCart();
 ```
 
-#### \`applyCoupon(code)\` / \`removeCoupon(code)\`
+#### `applyCoupon(code)` / `removeCoupon(code)`
 
 Manage discount coupons.
 
@@ -280,11 +280,11 @@ import type {
 
 ### v1.2.0 (2025-01-07)
 
-- 🐛 **CRITICAL FIX:** Fixed TypeError when \`\$shopConfig\` was undefined
+- 🐛 **CRITICAL FIX:** Fixed TypeError when `\$shopConfig` was undefined
 - 🔒 Fixed race conditions in concurrent cart operations
 - ✅ Added quantity validation (prevents negative values)
 - 📝 Added error context to all operations
-- 🛡️ Added defensive checks in \`formatPrice()\`
+- 🛡️ Added defensive checks in `formatPrice()`
 - 📚 Added comprehensive JSDoc documentation
 - 📦 Improved bundle size optimization
 

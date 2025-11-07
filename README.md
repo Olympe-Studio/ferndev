@@ -76,12 +76,12 @@ cd packages/woo && bunx tsc --noEmit
 
 ## Release Process
 
-1. Update version in \`package.json\`
+1. Update version in `package.json`
 2. Update CHANGELOG in README
-3. Build: \`bun run build\`
+3. Build: `bun run build`
 4. Commit changes
-5. Tag release: \`git tag v1.x.x\`
-6. Publish: \`npm publish\` (or \`bun publish\`)
+5. Tag release: `git tag v1.x.x`
+6. Publish: `npm publish` (or `bun publish`)
 
 ## License
 

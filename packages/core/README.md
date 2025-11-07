@@ -91,7 +91,7 @@ sayHello('John', getNonce());
 
 ## API Reference
 
-### \`callAction<T>(action, args?, nonce?, options?)\`
+### `callAction<T>(action, args?, nonce?, options?)`
 
 Makes an authenticated action request to the Fern backend.
 
@@ -99,10 +99,10 @@ Makes an authenticated action request to the Fern backend.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| \`action\` | \`string\` | *required* | The action name to call (matches PHP method name) |
-| \`args\` | \`Record<string, any> \\| FormData\` | \`{}\` | Arguments to pass to the action |
-| \`nonce\` | \`string\` | \`''\` | CSRF nonce token for security |
-| \`options\` | \`CallActionOptions\` | \`{}\` | Request configuration |
+| `action` | `string` | *required* | The action name to call (matches PHP method name) |
+| `args` | `Record<string, any> \\| FormData` | `{}` | Arguments to pass to the action |
+| `nonce` | `string` | `''` | CSRF nonce token for security |
+| `options` | `CallActionOptions` | `{}` | Request configuration |
 
 #### Options
 
@@ -250,7 +250,7 @@ if (result.status === 'ok') {
 - Chrome/Edge: ✅ Latest 2 versions
 - Firefox: ✅ Latest 2 versions
 - Safari: ✅ Latest 2 versions
-- Requires: \`fetch\` API, \`AbortController\`, \`Promise\`
+- Requires: `fetch` API, `AbortController`, `Promise`
 
 ## Changelog
 
