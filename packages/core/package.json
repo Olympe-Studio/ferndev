@@ -1,6 +1,6 @@
 {
   "name": "@ferndev/core",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Core browser features to work with the Fern Framework",
   "main": "index.ts",
   "private": false,
