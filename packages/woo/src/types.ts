@@ -10,20 +10,23 @@ export interface Price {
 export interface CartItem {
   key: string
   id: number
-  meta_data: {
-    [key: string]: any
-  }
   product_id: number
   variation_id?: number
   name: string
   short_description: string
   quantity: number
+  sku: string
+  position: number
   price: Price
   subtotal: string
   total: string
+  true_total: string
   variation: CartItemVariation
-  image?: string
-  productData: CartItemData
+  image: string | null
+  productData?: CartItemData | VariableProductData
+  meta_data: {
+    [key: string]: any
+  }
 }
 
 export interface CartItemVariation {
@@ -37,6 +40,7 @@ export interface CartItemData {
     price: Price
     min_quantity: number | ""
     max_quantity: number | ""
+    sku: string
     is_in_stock: boolean
     meta_data: {
       [key: string]: any
@@ -48,6 +52,23 @@ export interface CartItemData {
       options: string[]
     }
   }
+}
+
+export interface Variation {
+  id: number;
+  attributes: CartItemVariation;
+  price: Price;
+  min_quantity: number | "";
+  max_quantity: number | "";
+  sku: string;
+  is_in_stock: boolean;
+  meta_data: {
+    [key: string]: any;
+  };
+}
+
+export interface VariableProductData {
+  variations: Variation[]
 }
 
 export interface Cart {

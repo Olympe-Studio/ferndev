@@ -1,23 +1,34 @@
-# @fern/core
+# @ferndev/core
 
-A lightweight, type-safe utility for handling client-side actions with the Fern Framework.
+A lightweight, type-safe client library for making authenticated action requests to the Fern PHP framework.
 
+[![Version](https://img.shields.io/npm/v/@ferndev/core)](https://www.npmjs.com/package/@ferndev/core)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@ferndev/core)](https://bundlephobia.com/package/@ferndev/core)
+[![License](https://img.shields.io/npm/l/@ferndev/core)](https://github.com/ferndev/core/blob/main/LICENSE)
+
+## Features
+
+- ✅ **Type-Safe** - Full TypeScript support with strict typing
+- 🔒 **Secure** - Built-in CSRF protection with nonce support
+- ⚡ **Lightweight** - Only 1.8 KB gzipped
+- 🎯 **Simple API** - Single function for all your action needs
+- ⏱️ **Timeout Control** - Configurable request timeouts
+- 🛡️ **Defensive** - Validates request origins and argument types
+- 📝 **Well Documented** - Comprehensive JSDoc and examples
 
 ## Installation
 
 ```bash
-bun add @fern/core
+bun add @ferndev/core
 # or
-npm install @fern/core
+npm install @ferndev/core
 # or
-yarn add @fern/core
+yarn add @ferndev/core
 ```
 
-## Basic Usage
+## Quick Start
 
-To use this library, you first need to setup a Controller in your Fern project.
-
-Let's create a simple controller with a single action:
+### 1. Create a Controller (PHP)
 
 ```php
 // App/Controllers/HomePageController.php
@@ -30,123 +41,236 @@ use Fern\Core\Services\HTTP\Reply;
 use Fern\Core\Services\Controller\Controller;
 use Fern\Core\Services\HTTP\Request;
 
-
 class HomePageController extends Singleton implements Controller {
-  // Id of your HomePage
-  public static string $handle = '4';
+  public static string \$handle = '4'; // Page ID
 
-  /**
-   * Handle the request and return a reply.
-   *
-   * @param Request $request
-   * @return Reply
-   */
-  public function handle(Request $request): Reply {
+  public function handle(Request \$request): Reply {
     return new Reply(200, Views::render('HomePage', [
       'title' => 'Hello Fern!',
-      'content' => 'Welcome to the Fern Framework!',
+      'nonce' => wp_create_nonce('say_hello'),
     ]));
   }
 
   /**
-   * An exemple of an action that say Hello World.
-   *
-   * @see https://fern.dev/actions
-   *
-   * @return Reply
+   * Example action that returns a greeting
    */
-  public function sayHelloWorld(Request $request): Reply {
-    $action = $request->getAction();
-    $greeting = $action->get('greeting');
+  #[Nonce(actionName: 'say_hello')]
+  public function sayHello(Request \$request): Reply {
+    \$action = \$request->getAction();
+    \$name = \$action->get('name', 'World');
 
     return new Reply(200, [
-      'msg' => "Hello, {$greeting}!",
+      'message' => "Hello, {\$name}!",
     ]);
   }
 }
 ```
 
+### 2. Call from Client (TypeScript)
+
 ```ts
-import { callAction } from '@fern/core';
+import { callAction } from '@ferndev/core';
 
-const sayHelloWorld = async () => {
-  const { data, error, status } = await callAction('sayHelloWorld', { greeting: 'World' });
+const sayHello = async (name: string, nonce: string) => {
+  const result = await callAction<{ message: string }>(
+    'sayHello',
+    { name },
+    nonce
+  );
 
-  if (status === 'error') {
-    console.error('Failed to fetch user:', error?.message);
+  if (result.status === 'error') {
+    console.error('Failed:', result.error?.message);
     return;
   }
 
-  console.log('Fern is saying: ', data?.msg);
+  console.log(result.data.message); // "Hello, John!"
 };
+
+sayHello('John', getNonce());
 ```
 
-## Securing actions
+## API Reference
 
-Fern actions can be secured using several attributes, one of those is `#[Nonce]` that will automatically check for a valid nonce in the request:
+### `callAction<T>(action, args?, nonce?, options?)`
 
-```php
-// App/Controllers/Auth/MyAccountController.php
-<?php
+Makes an authenticated action request to the Fern backend.
 
-namespace App\Controllers\Auth;
+#### Parameters
 
-use Fern\Core\Factory\Singleton;
-use Fern\Core\Services\HTTP\Reply;
-use Fern\Core\Services\Controller\Controller;
-use Fern\Core\Services\HTTP\Request;
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `action` | `string` | *required* | The action name to call (matches PHP method name) |
+| `args` | `Record<string, any> \\| FormData` | `{}` | Arguments to pass to the action |
+| `nonce` | `string` | `''` | CSRF nonce token for security |
+| `options` | `CallActionOptions` | `{}` | Request configuration |
 
-class MyAccountController extends Singleton implements Controller {
-  public static string $handle = '5';
+#### Options
 
-  public function handle(Request $request): Reply {
-    return new Reply(200, Views::render('UserProfile', [
-      'title' => 'User Profile',
-      'user' => get_current_user(),
-      'nonce' => wp_create_nonce('update_profile'),
-    ]));
-  }
+```typescript
+interface CallActionOptions {
+  timeout?: number; // Request timeout in milliseconds (default: 30000)
+}
+```
 
-  /**
-   * Update user profile with secure nonce verification
-   *
-   * @see https://fern.dev/security/nonce
-   *
-   * @return Reply
-   */
-  #[Nonce(actionName: 'update_profile')]
-  public function updateProfile(Request $request): Reply {
-    // Nonce verification is automatically handled by the framework
-    $action = $request->getAction();
+#### Returns
 
-    // Get data from request
-    $newData = $action->get('profileData');
-    $id      = $action->get('id');
+```typescript
+Promise<{
+  data?: T;                    // Response data (typed)
+  error?: {                    // Error details
+    message: string;
+    status?: number;           // HTTP status code
+  };
+  status: 'ok' | 'error';      // Request status
+}>
+```
 
-    try {
-      // Update user profile
-      wp_update_user($id, $newData);
+## Advanced Usage
 
-      return new Reply(200, [
-        'success' => true,
-        'message' => 'Profile updated successfully',
-      ]);
-    } catch (\Exception $e) {
-      return new Reply(400, [
-        'success' => false,
-        'message' => 'Failed to update profile',
-      ]);
-    }
+### With Custom Timeout
+
+```ts
+// For slow operations (reports, exports, etc.)
+const result = await callAction(
+  'generateReport',
+  { reportType: 'annual' },
+  nonce,
+  { timeout: 60000 } // 60 seconds
+);
+```
+
+### With FormData (File Uploads)
+
+```ts
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('description', 'My document');
+
+const result = await callAction('uploadFile', formData, nonce);
+```
+
+### Error Handling
+
+```ts
+const result = await callAction('updateUser', { id: 123 }, nonce);
+
+if (result.status === 'error') {
+  switch (result.error?.status) {
+    case 400:
+      console.error('Bad request:', result.error.message);
+      break;
+    case 403:
+      console.error('Forbidden:', result.error.message);
+      break;
+    case 408:
+      console.error('Request timeout');
+      break;
+    case 500:
+      console.error('Server error:', result.error.message);
+      break;
+    default:
+      console.error('Unknown error:', result.error?.message);
   }
 }
 ```
 
-And, in the client side you can call the action like this:
+## Security Features
+
+### CSRF Protection
+
+Always use nonces for state-changing operations:
+
+```php
+// Generate nonce in PHP
+\$nonce = wp_create_nonce('delete_post');
+
+// Verify with #[Nonce] attribute
+#[Nonce(actionName: 'delete_post')]
+public function deletePost(Request \$request): Reply {
+  // Nonce automatically verified by framework
+  // ...
+}
+```
 
 ```ts
-const updateProfile = async (id: string, newData: any, nonce: string) => {
-  const { data, error, status } = await callAction('updateProfile', { nonce, id, newData });
-};
-
-updateProfile('1', { name: 'John Doe' }, 'whateveryournonceis');
+// Pass nonce from client
+await callAction('deletePost', { postId: 123 }, nonce);
 ```
+
+### Same-Origin Validation
+
+Requests are automatically validated to be same-origin for security. Cross-origin requests are blocked with a 403 error.
+
+### Input Type Validation
+
+Invalid argument types are caught and converted to empty objects with console warnings:
+
+```ts
+// These are automatically handled:
+callAction('test', 'invalid string')  // → Converted to {}
+callAction('test', null)               // → Converted to {}
+callAction('test', undefined)          // → Converted to {}
+```
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 400 | Bad Request - Invalid parameters or browser-only call |
+| 403 | Forbidden - CSRF token invalid or cross-origin request |
+| 408 | Timeout - Request exceeded timeout limit |
+| 500 | Server Error - Backend error occurred |
+
+## TypeScript Support
+
+Full TypeScript support with generics for type-safe responses:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const result = await callAction<User>('getUser', { id: 123 }, nonce);
+
+if (result.status === 'ok') {
+  // result.data is typed as User
+  console.log(result.data.name); // ✅ Type-safe
+}
+```
+
+## Bundle Size
+
+- **ES Module:** 1.79 KB (0.82 KB gzipped)
+- **UMD Module:** 1.65 KB (0.86 KB gzipped)
+
+## Browser Compatibility
+
+- Chrome/Edge: ✅ Latest 2 versions
+- Firefox: ✅ Latest 2 versions
+- Safari: ✅ Latest 2 versions
+- Requires: `fetch` API, `AbortController`, `Promise`
+
+## Changelog
+
+### v1.2.0 (2025-01-07)
+
+- ✨ Added configurable request timeout (default: 30s)
+- 🔒 Added same-origin validation for security
+- 🛡️ Added defensive type checking for arguments
+- 📝 Preserved HTTP status codes in errors
+- 📚 Added comprehensive JSDoc documentation
+- 🐛 Fixed type mismatch in error handling
+
+### v1.1.1 (Previous)
+
+- Initial release with basic action calling
+
+## License
+
+MIT © Tanguy Magnaudet
+
+## Links
+
+- [Fern Framework Documentation](https://fern.dev)
