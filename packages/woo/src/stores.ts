@@ -20,31 +20,31 @@ export const $cart = map<Cart>({
  * Computed store for total number of items in cart.
  * Returns 0 if cart is not initialized.
  */
-export const $cartItemsCount = computed($cart, cart => cart.item_count || 0)
+export const $cartItemsCount = computed($cart, cart => cart?.item_count ?? 0)
 
 /**
  * Computed store for cart total amount.
  * Returns "0" if cart is not initialized.
  */
-export const $cartTotal = computed($cart, cart => cart.total || "0")
+export const $cartTotal = computed($cart, cart => cart?.total ?? "0")
 
 /**
  * Computed store for cart subtotal (before taxes and shipping).
  * Returns "0" if cart is not initialized.
  */
-export const $cartSubtotal = computed($cart, cart => cart.subtotal || "0")
+export const $cartSubtotal = computed($cart, cart => cart?.subtotal ?? "0")
 
 /**
  * Computed store for total tax amount.
  * Returns "0" if cart is not initialized.
  */
-export const $cartTaxTotal = computed($cart, cart => cart.tax_total || "0")
+export const $cartTaxTotal = computed($cart, cart => cart?.tax_total ?? "0")
 
 /**
  * Computed store for total shipping cost.
  * Returns "0" if cart is not initialized.
  */
-export const $cartShippingTotal = computed($cart, cart => cart.shipping_total || "0")
+export const $cartShippingTotal = computed($cart, cart => cart?.shipping_total ?? "0")
 
 /**
  * Loading state indicator for cart operations.

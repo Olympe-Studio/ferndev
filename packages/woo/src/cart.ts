@@ -2,6 +2,68 @@ import { callAction } from "@ferndev/core"
 import { $cart, $cartIsLoading, $shopConfig, incrementLoadingState, decrementLoadingState } from "./stores"
 import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, BatchAddToCartArgs, BatchAddToCartResponse } from "./types"
 
+type CartActionResult = Awaited<ReturnType<typeof callAction<{ cart: Cart }>>>
+
+const DEFAULT_CART: Cart = {
+  items: [],
+  subtotal: "0",
+  total: "0",
+  item_count: 0,
+  tax_total: "0",
+  needs_shipping: false,
+  shipping_total: "0"
+}
+
+function isValidCart(cart: unknown): cart is Cart {
+  if (!cart || typeof cart !== 'object') return false
+  const c = cart as Record<string, unknown>
+  return (
+    Array.isArray(c.items) &&
+    typeof c.item_count === 'number'
+  )
+}
+
+// Validate responses before touching the cart store to avoid writing undefined data on backend errors.
+function getCartFromResult(actionName: string, result: CartActionResult): Cart | null {
+  if (result.status !== 'ok') {
+    console.error(`[Fern Woo] ${actionName} request failed: ${result.error?.message ?? 'Unknown error'}`)
+    return null
+  }
+
+  const data = result.data as any
+
+  if (!data || typeof data !== 'object') {
+    console.error(`[Fern Woo] ${actionName} returned invalid response payload`, data)
+    return null
+  }
+
+  if ('status' in data && data.status === 'error') {
+    const message = (data as any).error?.message ?? (data as any).message ?? 'Unknown error'
+    console.error(`[Fern Woo] ${actionName} failed: ${message}`)
+    return null
+  }
+
+  if (!('cart' in data) || data.cart == null) {
+    console.error(`[Fern Woo] ${actionName} response missing cart data`, data)
+    return null
+  }
+
+  const cart = data.cart
+  if (!isValidCart(cart)) {
+    console.error(`[Fern Woo] ${actionName} returned malformed cart data`, cart)
+    return { ...DEFAULT_CART, ...cart }
+  }
+
+  return cart
+}
+
+function updateCartStore(actionName: string, result: CartActionResult, { clone }: { clone?: boolean } = {}) {
+  const cart = getCartFromResult(actionName, result)
+  if (!cart) return
+
+  $cart.set(clone ? JSON.parse(JSON.stringify(cart)) : cart)
+}
+
 /**
  * Initialize the cart and shop configuration state.
  * This should be called when the app first loads to set up the initial cart state
@@ -18,9 +80,11 @@ export const initializeCart = async () => {
   incrementLoadingState()
   try {
     const result = await callAction<InitialStateResponse>('getInitialState')
-    if (result.status === 'ok' && result.data) {
+    if (result.status === 'ok' && result.data?.cart && result.data?.config) {
       $cart.set(result.data.cart)
       $shopConfig.set(result.data.config)
+    } else if (result.status === 'ok') {
+      console.error('[Fern Woo] initializeCart returned invalid payload', result.data)
     }
     return result
   } catch (e) {
@@ -87,9 +151,7 @@ export const addToCart = async ({
       variation,
       cart_item_key: cartItemKey
     })
-    if (result.status === 'ok' && result.data) {
-      $cart.set(JSON.parse(JSON.stringify(result.data.cart)))
-    }
+    updateCartStore('addToCart', result, { clone: true })
     return result
   } catch (e) {
     const error = new Error(`Failed to add product ${productId} to cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -148,9 +210,7 @@ export const batchAddToCart = async ({ items }: BatchAddToCartArgs) => {
       items: formattedItems
     })
 
-    if (result.status === 'ok' && result.data) {
-      $cart.set(JSON.parse(JSON.stringify(result.data.cart)))
-    }
+    updateCartStore('batchAddToCart', result, { clone: true })
     return result
   } catch (e) {
     const error = new Error(`Failed to batch add ${items.length} items to cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -215,9 +275,7 @@ export const updateCartItem = async ({
       variation
     })
 
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('updateCartItem', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to update cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -244,9 +302,7 @@ export const removeFromCart = async (cartItemKey: string) => {
     const result = await callAction<{ cart: Cart }>('removeFromCart', {
       cart_item_key: cartItemKey
     })
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('removeFromCart', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to remove cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -286,9 +342,7 @@ export const updateQuantity = async (cartItemKey: string, quantity: number) => {
       cart_item_key: cartItemKey,
       quantity
     })
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('updateQuantity', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to update quantity for cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -313,9 +367,7 @@ export const getCart = async () => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('getCartContents')
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('getCartContents', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to fetch cart contents: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -339,9 +391,7 @@ export const clearCart = async () => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('clearCart')
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('clearCart', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to clear cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -368,9 +418,7 @@ export const applyCoupon = async (couponCode: string) => {
     const result = await callAction<{ cart: Cart }>('applyCoupon', {
       coupon: couponCode
     })
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('applyCoupon', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to apply coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -397,9 +445,7 @@ export const removeCoupon = async (couponCode: string) => {
     const result = await callAction<{ cart: Cart }>('removeCoupon', {
       coupon: couponCode
     })
-    if (result.status === 'ok' && result.data) {
-      $cart.set(result.data.cart)
-    }
+    updateCartStore('removeCoupon', result)
     return result
   } catch (e) {
     const error = new Error(`Failed to remove coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}`)
