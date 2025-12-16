@@ -90,9 +90,12 @@ export const callAction = async <T>(
     let headers: Record<string, string> = {};
 
     if (args instanceof FormData) {
-      // Add action and nonce to FormData if provided
+      // Add action and nonce to FormData at top level and in args
       args.append('action', action);
-      if (nonce) args.append('_nonce', nonce);
+      if (nonce) {
+        args.append('_nonce', nonce);
+        args.append('args[_nonce]', nonce);
+      }
       body = args;
     } else {
       // Defensive type checking to prevent invalid args
@@ -104,7 +107,9 @@ export const callAction = async <T>(
         args = {};
       }
 
-      body = JSON.stringify({ action, args, _nonce: nonce });
+      // Include _nonce in both top level and inside args
+      const argsWithNonce = nonce ? { ...args, _nonce: nonce } : args;
+      body = JSON.stringify({ action, args: argsWithNonce, _nonce: nonce });
       headers['Content-Type'] = 'application/json';
     }
 
