@@ -77,8 +77,13 @@ export interface Cart {
   total: string
   item_count: number
   tax_total: string
+  tax_total_numeric?: number
   needs_shipping: boolean
   shipping_total: string
+  shipping_total_numeric?: number
+  meta_data: {
+    [key: string]: any
+  }
 }
 
 export interface InitialStateResponse {
