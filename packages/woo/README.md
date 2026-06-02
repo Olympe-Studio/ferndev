@@ -43,17 +43,27 @@ await initializeCart();
 ```typescript
 import { addToCart, removeFromCart, $cartItemsCount } from '@ferndev/woo';
 
-// Add product to cart
-const result = await addToCart({
-  productId: 123,
-  quantity: 2
-});
+// Cart actions return a normalized CartResult discriminated union.
+// A business failure (out-of-stock, etc.) yields { status: 'error', error }.
+const result = await addToCart({ productId: 123, quantity: 2 });
+
+if (result.status === 'ok') {
+  console.log('Added — cart total:', result.cart.total);
+} else {
+  // result.error.code may be e.g. 'out_of_stock'
+  showToast(result.error.message);
+}
 
 // React to cart changes
 $cartItemsCount.subscribe(count => {
   console.log(`Cart has \${count} items`);
 });
 ```
+
+> **Result types.** Single actions return `CartResult`
+> (`{ status: 'ok'; cart } | { status: 'error'; error: WooError }`). `initializeCart()` returns
+> `InitialStateResult` (adds `config`); `batchAddToCart()` returns `BatchCartResult` (adds
+> per-item `results`). The `$cart` store is only updated on success.
 
 ## API Reference
 

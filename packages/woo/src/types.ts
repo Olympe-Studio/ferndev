@@ -119,6 +119,38 @@ export interface BatchAddToCartResponse {
   cart: Cart
 }
 
+/**
+ * Error payload carried by a failed cart operation. `code` is the backend's machine-readable
+ * reason when available (e.g. `'out_of_stock'`, `'invalid_coupon'`).
+ */
+export interface WooError {
+  message: string
+  code?: string
+}
+
+/**
+ * Normalized result of a single cart operation. A discriminated union on `status`: success
+ * carries the updated `cart`, failure (transport OR business, e.g. out-of-stock) carries `error`.
+ */
+export type CartResult =
+  | { status: 'ok'; cart: Cart }
+  | { status: 'error'; error: WooError }
+
+/**
+ * Result of {@link initializeCart}: success carries both the `cart` and shop `config`.
+ */
+export type InitialStateResult =
+  | { status: 'ok'; cart: Cart; config: WooCommerceConfig }
+  | { status: 'error'; error: WooError }
+
+/**
+ * Result of {@link batchAddToCart}. Preserves per-item `results` on both branches: a partial
+ * failure yields `status: 'error'` while still updating the cart with the items that succeeded.
+ */
+export type BatchCartResult =
+  | { status: 'ok'; cart: Cart; results: BatchItemResult[] }
+  | { status: 'error'; error: WooError; results?: BatchItemResult[] }
+
 type WooBoolean = 'yes' | 'no';
 type CurrencyPosition = 'left' | 'right' | 'left_space' | 'right_space';
 type TaxDisplay = 'incl' | 'excl';

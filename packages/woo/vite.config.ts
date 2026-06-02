@@ -14,9 +14,17 @@ export default defineConfig({
     },
     rollupOptions: {
       external: ['typescript', '@ferndev/core', 'nanostores'],
+      output: {
+        globals: {
+          '@ferndev/core': 'fern_core',
+          nanostores: 'nanostores',
+        },
+      },
     }
   },
   plugins: [dts({
     insertTypesEntry: true,
+    rollupTypes: true,
+    staticImport: true,
   })],
 })

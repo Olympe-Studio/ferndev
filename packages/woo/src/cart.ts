@@ -1,8 +1,19 @@
-import { callAction } from "@ferndev/core"
+import { callAction, ActionResult } from "@ferndev/core"
 import { $cart, $shopConfig, incrementLoadingState, decrementLoadingState } from "./stores"
-import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, BatchAddToCartArgs, BatchAddToCartResponse } from "./types"
-
-type CartActionResult = Awaited<ReturnType<typeof callAction<{ cart: Cart }>>>
+import {
+  AddToCartArgs,
+  Cart,
+  InitialStateResponse,
+  UpdateCartItemArgs,
+  BatchAddToCartArgs,
+  BatchAddToCartResponse,
+  BatchItemResult,
+  WooCommerceConfig,
+  WooError,
+  CartResult,
+  BatchCartResult,
+  InitialStateResult
+} from "./types"
 
 const DEFAULT_CART: Cart = {
   items: [],
@@ -24,45 +35,78 @@ function isValidCart(cart: unknown): cart is Cart {
   return c !== null && Array.isArray(c['items']) && typeof c['item_count'] === 'number'
 }
 
-// Validate responses before touching the cart store to avoid writing undefined data on backend errors.
-function getCartFromResult(actionName: string, result: CartActionResult): Cart | null {
-  if (result.status !== 'ok') {
-    console.error(`[Fern Woo] ${actionName} request failed: ${result.error?.message ?? 'Unknown error'}`)
-    return null
+/**
+ * Extract a {@link WooError} from a backend payload that signalled a business failure,
+ * preferring a nested `error.message`/`error.code` and falling back to top-level fields.
+ */
+function payloadError(payload: Record<string, unknown>): WooError {
+  const nested = asRecord(payload['error'])
+  const message = nested?.['message'] ?? payload['message']
+  const code = nested?.['code'] ?? payload['code']
+  const error: WooError = {
+    message: typeof message === 'string' ? message : 'Unknown error'
+  }
+  if (typeof code === 'string') error.code = code
+  return error
+}
+
+/**
+ * Map a core {@link ActionResult} into a normalized {@link CartResult}, updating the `$cart`
+ * store only when the operation genuinely succeeded. Business failures (e.g. out-of-stock)
+ * surface as `{ status: 'error', error }` instead of being swallowed.
+ */
+function resolveCart(result: ActionResult<{ cart: Cart }>, { clone }: { clone?: boolean } = {}): CartResult {
+  if (result.status === 'error') {
+    return { status: 'error', error: { message: result.error.message } }
   }
 
   const payload = asRecord(result.data)
   if (!payload) {
-    console.error(`[Fern Woo] ${actionName} returned invalid response payload`, result.data)
-    return null
+    return { status: 'error', error: { message: 'Invalid response payload' } }
   }
 
   if (payload['status'] === 'error') {
-    const nested = asRecord(payload['error'])
-    const message = nested?.['message'] ?? payload['message'] ?? 'Unknown error'
-    console.error(`[Fern Woo] ${actionName} failed: ${typeof message === 'string' ? message : 'Unknown error'}`)
-    return null
+    return { status: 'error', error: payloadError(payload) }
   }
 
-  const cart = payload['cart']
-  if (cart == null) {
-    console.error(`[Fern Woo] ${actionName} response missing cart data`, result.data)
-    return null
+  const rawCart = payload['cart']
+  if (rawCart == null) {
+    return { status: 'error', error: { message: 'Response missing cart data' } }
   }
 
-  if (!isValidCart(cart)) {
-    console.error(`[Fern Woo] ${actionName} returned malformed cart data`, cart)
-    return { ...DEFAULT_CART, ...(cart as Partial<Cart>) }
-  }
-
-  return cart
+  const cart = isValidCart(rawCart) ? rawCart : { ...DEFAULT_CART, ...(rawCart as Partial<Cart>) }
+  $cart.set(clone ? (JSON.parse(JSON.stringify(cart)) as Cart) : cart)
+  return { status: 'ok', cart }
 }
 
-function updateCartStore(actionName: string, result: CartActionResult, { clone }: { clone?: boolean } = {}) {
-  const cart = getCartFromResult(actionName, result)
-  if (!cart) return
+/**
+ * Map a batch response into a {@link BatchCartResult}, preserving per-item `results`. A partial
+ * failure still updates the cart with the items that succeeded but reports `status: 'error'`.
+ */
+function resolveBatch(result: ActionResult<BatchAddToCartResponse>, { clone }: { clone?: boolean } = {}): BatchCartResult {
+  if (result.status === 'error') {
+    return { status: 'error', error: { message: result.error.message } }
+  }
 
-  $cart.set(clone ? (JSON.parse(JSON.stringify(cart)) as Cart) : cart)
+  const payload = asRecord(result.data)
+  if (!payload) {
+    return { status: 'error', error: { message: 'Invalid response payload' } }
+  }
+
+  const results = Array.isArray(payload['results']) ? (payload['results'] as BatchItemResult[]) : undefined
+  const rawCart = payload['cart']
+
+  if (!isValidCart(rawCart)) {
+    return { status: 'error', error: payloadError(payload), results }
+  }
+
+  $cart.set(clone ? (JSON.parse(JSON.stringify(rawCart)) as Cart) : rawCart)
+
+  if (payload['success'] === false) {
+    return { status: 'error', error: payloadError(payload), results }
+  }
+
+  return { status: 'ok', cart: rawCart, results: results ?? [] }
 }
 
 /**
@@ -70,29 +114,35 @@ function updateCartStore(actionName: string, result: CartActionResult, { clone }
  * This should be called when the app first loads to set up the initial cart state
  * and shop configuration (currency, tax settings, etc.).
  *
- * @returns A promise that resolves to the action result containing both cart and shop config
+ * @returns A promise resolving to an {@link InitialStateResult} carrying both cart and shop config
  * @example
  * ```ts
  * // On app mount:
- * await initializeCart()
+ * const result = await initializeCart()
+ * if (result.status === 'error') console.error(result.error.message)
  * ```
  */
-export const initializeCart = async () => {
+export const initializeCart = async (): Promise<InitialStateResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<InitialStateResponse>('getInitialState')
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime guard: backend may violate the typed InitialStateResponse contract
-    if (result.status === 'ok' && result.data?.cart && result.data?.config) {
-      $cart.set(result.data.cart)
-      $shopConfig.set(result.data.config)
-    } else if (result.status === 'ok') {
-      console.error('[Fern Woo] initializeCart returned invalid payload', result.data)
+    if (result.status === 'error') {
+      return { status: 'error', error: { message: result.error.message } }
     }
-    return result
+
+    const payload = asRecord(result.data)
+    const rawCart = payload?.['cart']
+    const rawConfig = payload?.['config']
+    if (!isValidCart(rawCart) || asRecord(rawConfig) === null) {
+      return { status: 'error', error: { message: 'initializeCart returned invalid payload' } }
+    }
+
+    const config = rawConfig as WooCommerceConfig
+    $cart.set(rawCart)
+    $shopConfig.set(config)
+    return { status: 'ok', cart: rawCart, config }
   } catch (e) {
-    const error = new Error(`Failed to initialize cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to initialize cart: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -106,8 +156,8 @@ export const initializeCart = async () => {
  * @param quantity - The quantity to add (defaults to 1)
  * @param variationId - For variable products, the specific variation ID
  * @param variation - For variable products, the attribute combinations
- * @returns A promise that resolves to the action result containing updated cart
-
+ * @returns A promise resolving to a {@link CartResult} with the updated cart, or an error
+ *
  * @example
  * Simple product:
  * ```ts
@@ -143,7 +193,7 @@ export const addToCart = async ({
   variationId,
   variation = {},
   cartItemKey
-}: AddToCartArgs) => {
+}: AddToCartArgs): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('addToCart', {
@@ -153,12 +203,9 @@ export const addToCart = async ({
       variation,
       cart_item_key: cartItemKey
     })
-    updateCartStore('addToCart', result, { clone: true })
-    return result
+    return resolveCart(result, { clone: true })
   } catch (e) {
-    const error = new Error(`Failed to add product ${productId} to cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to add product ${productId} to cart: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -169,7 +216,7 @@ export const addToCart = async ({
  * Allows adding multiple products at once with individual success/failure tracking.
  *
  * @param items - Array of items to add to cart
- * @returns A promise that resolves to the batch operation result with individual item results
+ * @returns A promise resolving to a {@link BatchCartResult} with per-item `results`
  *
  * @example
  * Simple batch add:
@@ -198,7 +245,7 @@ export const addToCart = async ({
  * })
  * ```
  */
-export const batchAddToCart = async ({ items }: BatchAddToCartArgs) => {
+export const batchAddToCart = async ({ items }: BatchAddToCartArgs): Promise<BatchCartResult> => {
   incrementLoadingState()
   try {
     const formattedItems = items.map(item => ({
@@ -212,12 +259,9 @@ export const batchAddToCart = async ({ items }: BatchAddToCartArgs) => {
       items: formattedItems
     })
 
-    updateCartStore('batchAddToCart', result, { clone: true })
-    return result
+    return resolveBatch(result, { clone: true })
   } catch (e) {
-    const error = new Error(`Failed to batch add ${items.length} items to cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to batch add ${items.length} items to cart: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -228,7 +272,7 @@ export const batchAddToCart = async ({ items }: BatchAddToCartArgs) => {
  * Handles both simple and variable products
  *
  * @param args - Configuration for the cart item update
- * @returns Promise with the cart action result
+ * @returns A promise resolving to a {@link CartResult}
  *
  * @example
  * Update quantity of simple product:
@@ -255,7 +299,7 @@ export const updateCartItem = async ({
   quantity,
   variationId,
   variation
-}: UpdateCartItemArgs) => {
+}: UpdateCartItemArgs): Promise<CartResult> => {
   incrementLoadingState()
   try {
     // If only updating quantity (simple or variable product)
@@ -266,7 +310,7 @@ export const updateCartItem = async ({
     // If updating variation or both quantity and variation
     const currentItem = $cart.get().items.find(item => item.key === cartItemKey)
     if (!currentItem) {
-      throw new Error('Cart item not found')
+      return { status: 'error', error: { message: 'Cart item not found', code: 'item_not_found' } }
     }
 
     const result = await callAction<{ cart: Cart }>('updateCartItem', {
@@ -277,12 +321,9 @@ export const updateCartItem = async ({
       variation
     })
 
-    updateCartStore('updateCartItem', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to update cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to update cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -292,24 +333,21 @@ export const updateCartItem = async ({
  * Remove an item from the cart.
  *
  * @param cartItemKey - The unique key of the cart item to remove
- * @returns A promise that resolves to the action result containing updated cart
+ * @returns A promise resolving to a {@link CartResult} with the updated cart
  * @example
  * ```ts
  * await removeFromCart('a123b456c789')
  * ```
  */
-export const removeFromCart = async (cartItemKey: string) => {
+export const removeFromCart = async (cartItemKey: string): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('removeFromCart', {
       cart_item_key: cartItemKey
     })
-    updateCartStore('removeFromCart', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to remove cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to remove cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -319,18 +357,18 @@ export const removeFromCart = async (cartItemKey: string) => {
  * Update the quantity of an item in the cart.
  *
  * @param cartItemKey - The unique key of the cart item to update
- * @param quantity - The new quantity to set (must be positive; use removeFromCart for zero)
- * @returns A promise that resolves to the action result containing updated cart
- * @throws Error if quantity is negative
+ * @param quantity - The new quantity to set (must be positive; zero removes the item)
+ * @returns A promise resolving to a {@link CartResult}. A negative quantity yields an error
+ * result with code `invalid_quantity` rather than throwing.
  * @example
  * ```ts
  * await updateQuantity('a123b456c789', 3)
  * ```
  */
-export const updateQuantity = async (cartItemKey: string, quantity: number) => {
-  // Validation: quantity must be positive
+export const updateQuantity = async (cartItemKey: string, quantity: number): Promise<CartResult> => {
+  // Validation: quantity must not be negative
   if (quantity < 0) {
-    throw new Error(`Invalid quantity: ${quantity}. Quantity must be positive. Use removeFromCart() to remove items.`)
+    return { status: 'error', error: { message: `Invalid quantity: ${quantity}. Quantity must be positive. Use removeFromCart() to remove items.`, code: 'invalid_quantity' } }
   }
 
   // If quantity is zero, remove the item instead
@@ -344,12 +382,9 @@ export const updateQuantity = async (cartItemKey: string, quantity: number) => {
       cart_item_key: cartItemKey,
       quantity
     })
-    updateCartStore('updateQuantity', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to update quantity for cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to update quantity for cart item ${cartItemKey}: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -359,22 +394,19 @@ export const updateQuantity = async (cartItemKey: string, quantity: number) => {
  * Fetch the current cart contents from the server.
  * Useful for refreshing the cart state or checking for changes.
  *
- * @returns A promise that resolves to the action result containing current cart
+ * @returns A promise resolving to a {@link CartResult} with the current cart
  * @example
  * ```ts
  * await getCart()
  * ```
  */
-export const getCart = async () => {
+export const getCart = async (): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('getCartContents')
-    updateCartStore('getCartContents', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to fetch cart contents: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to fetch cart contents: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -383,22 +415,19 @@ export const getCart = async () => {
 /**
  * Clear all items from the cart.
  *
- * @returns A promise that resolves to the action result containing empty cart
+ * @returns A promise resolving to a {@link CartResult} with the emptied cart
  * @example
  * ```ts
  * await clearCart()
  * ```
  */
-export const clearCart = async () => {
+export const clearCart = async (): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('clearCart')
-    updateCartStore('clearCart', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to clear cart: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to clear cart: ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -408,24 +437,21 @@ export const clearCart = async () => {
  * Apply a coupon code to the cart.
  *
  * @param couponCode - The coupon code to apply
- * @returns A promise that resolves to the action result containing updated cart
+ * @returns A promise resolving to a {@link CartResult} with the updated cart
  * @example
  * ```ts
  * await applyCoupon('SAVE20')
  * ```
  */
-export const applyCoupon = async (couponCode: string) => {
+export const applyCoupon = async (couponCode: string): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('applyCoupon', {
       coupon: couponCode
     })
-    updateCartStore('applyCoupon', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to apply coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to apply coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }
@@ -435,24 +461,21 @@ export const applyCoupon = async (couponCode: string) => {
  * Remove a coupon from the cart.
  *
  * @param couponCode - The coupon code to remove
- * @returns A promise that resolves to the action result containing updated cart
+ * @returns A promise resolving to a {@link CartResult} with the updated cart
  * @example
  * ```ts
  * await removeCoupon('SAVE20')
  * ```
  */
-export const removeCoupon = async (couponCode: string) => {
+export const removeCoupon = async (couponCode: string): Promise<CartResult> => {
   incrementLoadingState()
   try {
     const result = await callAction<{ cart: Cart }>('removeCoupon', {
       coupon: couponCode
     })
-    updateCartStore('removeCoupon', result)
-    return result
+    return resolveCart(result)
   } catch (e) {
-    const error = new Error(`Failed to remove coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}`)
-    error.cause = e
-    throw error
+    return { status: 'error', error: { message: `Failed to remove coupon '${couponCode}': ${e instanceof Error ? e.message : 'Unknown error'}` } }
   } finally {
     decrementLoadingState()
   }

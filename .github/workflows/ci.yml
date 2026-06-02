@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build
+        run: bun run build
+
+      - name: Test (100% coverage gate)
+        run: bun test --coverage
+
+      - name: Validate package publishing (publint)
+        run: bun run publint
+
+      - name: Validate type resolution (are-the-types-wrong)
+        run: bun run attw
+
+      - name: Enforce bundle size budgets
+        run: bun run size

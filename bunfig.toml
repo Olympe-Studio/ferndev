@@ -1,0 +1,14 @@
+[test]
+coverage = true
+# NOTE: Bun honors plural keys here; the singular form (line/function/statement) is silently ignored.
+coverageThreshold = { lines = 1, functions = 1, statements = 1 }
+coverageSkipTestFiles = true
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+coveragePathIgnorePatterns = [
+  "**/dist/**",
+  "**/node_modules/**",
+  "**/tests/**",
+  "**/*.config.*",
+  "**/types.ts"
+]

@@ -2,10 +2,14 @@
   "name": "@ferndev/woo",
   "version": "2.0.0",
   "description": "WooCommerce actions to work with the Fern Framework",
-  "main": "./src/index.ts",
+  "main": "./dist/fern_woo.umd.cjs",
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
   "license": "MIT",
   "private": false,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "module": "./dist/fern_woo.js",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -15,13 +19,19 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/fern_woo.js",
-      "require": "./dist/fern_woo.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/fern_woo.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/fern_woo.umd.cjs"
+      }
     }
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
     "prepack": "bun run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
