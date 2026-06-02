@@ -276,21 +276,18 @@ import type {
 } from '@ferndev/woo';
 ```
 
+> **v2 note:** the open-ended `meta_data` bags (`Cart`, `CartItem`, `Variation`,
+> `CartItemData.variations[]`) are now `Record<string, unknown>` instead of
+> `{ [key: string]: any }`. Cast or narrow the specific keys you read:
+>
+> ```typescript
+> const note = cart.meta_data['delivery_note'] as string | undefined;
+> ```
+
 ## Changelog
 
-### v1.2.0 (2025-01-07)
-
-- 🐛 **CRITICAL FIX:** Fixed TypeError when `\$shopConfig` was undefined
-- 🔒 Fixed race conditions in concurrent cart operations
-- ✅ Added quantity validation (prevents negative values)
-- 📝 Added error context to all operations
-- 🛡️ Added defensive checks in `formatPrice()`
-- 📚 Added comprehensive JSDoc documentation
-- 📦 Improved bundle size optimization
-
-### v1.1.3 (Previous)
-
-- Initial release with basic cart functionality
+See the monorepo [CHANGELOG.md](../../CHANGELOG.md). Latest: **2.0.0** — `meta_data` values
+are now `unknown` (was `any`); requires `@ferndev/core` `^2.0.0`.
 
 ## License
 

@@ -11,9 +11,9 @@ A lightweight, type-safe client library for making authenticated action requests
 - ✅ **Type-Safe** - Full TypeScript support with strict typing
 - 🔒 **Secure** - Built-in CSRF protection with nonce support
 - ⚡ **Lightweight** - Only 1.8 KB gzipped
-- 🎯 **Simple API** - Single function for all your action needs
+- 🎯 **Simple API** - `callAction` for one-offs, `defineAction` to bind an action's types once
 - ⏱️ **Timeout Control** - Configurable request timeouts
-- 🛡️ **Defensive** - Validates request origins and argument types
+- 🛡️ **Defensive** - Validates request origins; argument and response types enforced at compile time
 - 📝 **Well Documented** - Comprehensive JSDoc and examples
 
 ## Installation
@@ -69,13 +69,16 @@ class HomePageController extends Singleton implements Controller {
 ### 2. Call from Client (TypeScript)
 
 ```ts
-import { callAction } from '@ferndev/core';
+import { callAction, defineAction } from '@ferndev/core';
 
+interface SayHelloArgs { name: string }
+
+// Per-call: the response type is required in v2; the args type is optional but recommended
 const sayHello = async (name: string, nonce: string) => {
-  const result = await callAction<{ message: string }>(
+  const result = await callAction<{ message: string }, SayHelloArgs>(
     'sayHello',
     { name },
-    nonce
+    nonce,
   );
 
   if (result.status === 'error') {
@@ -83,24 +86,34 @@ const sayHello = async (name: string, nonce: string) => {
     return;
   }
 
-  console.log(result.data.message); // "Hello, John!"
+  console.log(result.data?.message); // "Hello, John!"
 };
 
-sayHello('John', getNonce());
+// Recommended: bind the action's types once, then call it cleanly everywhere
+const sayHelloAction = defineAction<SayHelloArgs, { message: string }>('sayHello');
+const result = await sayHelloAction({ name: 'John' }, getNonce());
+console.log(result.data?.message);
 ```
 
 ## API Reference
 
-### `callAction<T>(action, args?, nonce?, options?)`
+### `callAction<TData, TArgs>(action, args?, nonce?, options?)`
 
 Makes an authenticated action request to the Fern backend.
+
+#### Type parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `TData` | `unknown` | Expected response data type. Defaults to `unknown` — you must supply it (`callAction<MyType>(…)`) or narrow before reading `result.data`. |
+| `TArgs` | `Record<string, unknown>` | Optional args type. Supply it to type-check the payload: `callAction<Data, MyArgs>(…)`. Bound to `object` or `FormData`, so your own `interface` types are accepted. |
 
 #### Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `action` | `string` | *required* | The action name to call (matches PHP method name) |
-| `args` | `Record<string, any> \\| FormData` | `{}` | Arguments to pass to the action |
+| `args` | `TArgs` (an object or `FormData`) | `undefined` | Arguments to pass to the action |
 | `nonce` | `string` | `''` | CSRF nonce token for security |
 | `options` | `CallActionOptions` | `{}` | Request configuration |
 
@@ -115,15 +128,39 @@ interface CallActionOptions {
 #### Returns
 
 ```typescript
-Promise<{
-  data?: T;                    // Response data (typed)
+Promise<ActionResult<TData>>
+
+interface ActionResult<TData = unknown> {
+  data?: TData;                // Response data (typed)
   error?: {                    // Error details
     message: string;
     status?: number;           // HTTP status code
   };
   status: 'ok' | 'error';      // Request status
-}>
+}
 ```
+
+### `defineAction<TArgs, TData>(action)`
+
+Binds an action name to its argument and response types **once** and returns a fully typed
+caller. This is the recommended way to consume actions: the binding lives in a single local
+declaration, so every call site is type-checked with no per-call generics and no action
+string to mistype.
+
+```typescript
+import { defineAction } from '@ferndev/core';
+
+interface AddToCartArgs { product_id: number; quantity: number }
+interface CartResponse  { cart: Cart }
+
+const addToCart = defineAction<AddToCartArgs, CartResponse>('addToCart');
+
+const result = await addToCart({ product_id: 123, quantity: 2 }); // ✅ args + data typed
+result.data?.cart;                                                // ✅ CartResponse
+await addToCart({ product_id: 123 });                             // ❌ missing quantity
+```
+
+Returns `(args?: TArgs, nonce?: string, options?: CallActionOptions) => Promise<ActionResult<TData>>`.
 
 ## Advanced Usage
 
@@ -203,13 +240,13 @@ Requests are automatically validated to be same-origin for security. Cross-origi
 
 ### Input Type Validation
 
-Invalid argument types are caught and converted to empty objects with console warnings:
+As of v2 `args` is statically typed as `object | FormData`, so invalid argument types are
+caught at compile time rather than coerced at runtime:
 
 ```ts
-// These are automatically handled:
-callAction('test', 'invalid string')  // → Converted to {}
-callAction('test', null)               // → Converted to {}
-callAction('test', undefined)          // → Converted to {}
+callAction('test', 'invalid string')  // ❌ compile error
+callAction('test', { ok: true })      // ✅
+callAction('test')                    // ✅ args optional
 ```
 
 ## Error Codes
@@ -223,21 +260,29 @@ callAction('test', undefined)          // → Converted to {}
 
 ## TypeScript Support
 
-Full TypeScript support with generics for type-safe responses:
+Full TypeScript support with generics for type-safe requests **and** responses. The response
+type defaults to `unknown`, so the compiler forces you to declare it:
 
 ```typescript
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
+interface User { id: number; name: string; email: string }
+interface GetUserArgs { id: number }
 
-const result = await callAction<User>('getUser', { id: 123 }, nonce);
+const result = await callAction<User, GetUserArgs>('getUser', { id: 123 }, nonce);
 
 if (result.status === 'ok') {
-  // result.data is typed as User
-  console.log(result.data.name); // ✅ Type-safe
+  console.log(result.data?.name); // ✅ User, type-safe
 }
+
+// Without a type argument, result.data is `unknown` and must be narrowed:
+const raw = await callAction('getUser', { id: 123 }, nonce);
+// raw.data.name → ❌ 'raw.data' is of type 'unknown'
+```
+
+The exported types `ActionResult`, `ActionArgs`, and `CallActionOptions` are available for
+your own signatures:
+
+```typescript
+import type { ActionResult, ActionArgs, CallActionOptions } from '@ferndev/core';
 ```
 
 ## Bundle Size
@@ -254,18 +299,8 @@ if (result.status === 'ok') {
 
 ## Changelog
 
-### v1.2.0 (2025-01-07)
-
-- ✨ Added configurable request timeout (default: 30s)
-- 🔒 Added same-origin validation for security
-- 🛡️ Added defensive type checking for arguments
-- 📝 Preserved HTTP status codes in errors
-- 📚 Added comprehensive JSDoc documentation
-- 🐛 Fixed type mismatch in error handling
-
-### v1.1.1 (Previous)
-
-- Initial release with basic action calling
+See the monorepo [CHANGELOG.md](../../CHANGELOG.md). Latest: **2.0.0** — response type
+defaults to `unknown`, caller-typed `args`, and `defineAction`.
 
 ## License
 

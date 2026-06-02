@@ -1,22 +1,20 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": [
       "ESNext",
       "DOM"
     ],
     "module": "NodeNext",
+    "moduleResolution": "nodenext",
     "composite": true,
     "target": "esnext",
-    "moduleResolution": "nodenext",
-    "strict": true,
     "downlevelIteration": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "skipLibCheck": true,
     "jsx": "preserve",
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowJs": true
+    "allowJs": false
   },
   "include": [
     "./index.ts"

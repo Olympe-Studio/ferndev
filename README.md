@@ -56,31 +56,39 @@ ferndev/
 Each package uses Vite for bundling:
 
 ```bash
-# Build all
-bun run build:all
+# Build all (workspace filter)
+bun run build
 
 # Build individually
 cd packages/core && bun run build
 cd packages/woo && bun run build
 ```
 
-### Type Checking
+### Type Checking & Linting
+
+Both packages share a strict `tsconfig.base.json` and a type-aware `typescript-eslint`
+config (`strictTypeChecked` + `stylisticTypeChecked`).
 
 ```bash
-# Check types for core
-cd packages/core && bunx tsc --noEmit
+# All packages, from the repo root
+bun run typecheck      # tsc --noEmit per package
+bun run lint           # eslint . (strict, type-aware)
 
-# Check types for woo
-cd packages/woo && bunx tsc --noEmit
+# A single package
+cd packages/core && bun run typecheck && bun run lint
 ```
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md). Latest: **2.0.0** (breaking — type-safety overhaul).
 
 ## Release Process
 
-1. Update version in `package.json`
-2. Update CHANGELOG in README
+1. Update version in each `packages/*/package.json`
+2. Update [CHANGELOG.md](./CHANGELOG.md)
 3. Build: `bun run build`
 4. Commit changes
-5. Tag release: `git tag v1.x.x`
+5. Tag release: `git tag vX.Y.Z`
 6. Publish: `npm publish` (or `bun publish`)
 
 ## License

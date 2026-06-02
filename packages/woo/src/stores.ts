@@ -13,38 +13,39 @@ export const $cart = map<Cart>({
   item_count: 0,
   tax_total: "0",
   needs_shipping: false,
-  shipping_total: "0"
+  shipping_total: "0",
+  meta_data: {}
 })
 
 /**
  * Computed store for total number of items in cart.
  * Returns 0 if cart is not initialized.
  */
-export const $cartItemsCount = computed($cart, cart => cart?.item_count ?? 0)
+export const $cartItemsCount = computed($cart, cart => cart.item_count)
 
 /**
  * Computed store for cart total amount.
  * Returns "0" if cart is not initialized.
  */
-export const $cartTotal = computed($cart, cart => cart?.total ?? "0")
+export const $cartTotal = computed($cart, cart => cart.total)
 
 /**
  * Computed store for cart subtotal (before taxes and shipping).
  * Returns "0" if cart is not initialized.
  */
-export const $cartSubtotal = computed($cart, cart => cart?.subtotal ?? "0")
+export const $cartSubtotal = computed($cart, cart => cart.subtotal)
 
 /**
  * Computed store for total tax amount.
  * Returns "0" if cart is not initialized.
  */
-export const $cartTaxTotal = computed($cart, cart => cart?.tax_total ?? "0")
+export const $cartTaxTotal = computed($cart, cart => cart.tax_total)
 
 /**
  * Computed store for total shipping cost.
  * Returns "0" if cart is not initialized.
  */
-export const $cartShippingTotal = computed($cart, cart => cart?.shipping_total ?? "0")
+export const $cartShippingTotal = computed($cart, cart => cart.shipping_total)
 
 /**
  * Loading state indicator for cart operations.
