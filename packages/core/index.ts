@@ -116,14 +116,10 @@ export async function callAction<
     };
   }
 
-  // Validate that request is same-origin for security
-  const url = new URL(window.location.href);
-  if (url.origin !== window.origin) {
-    return {
-      error: { message: 'Cross-origin action requests not allowed', status: 403 },
-      status: 'error',
-    };
-  }
+  // CSRF protection rests on two facts: the request is POSTed to `window.location.href`, so it
+  // is inherently same-origin and carries the session cookie, and the caller-supplied `nonce`
+  // is validated server-side. A document-origin comparison here would be tautological
+  // (`new URL(window.location.href).origin` always equals `window.origin`).
 
   // Setup timeout abort controller
   const controller = new AbortController();

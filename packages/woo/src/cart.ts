@@ -488,6 +488,10 @@ export const removeCoupon = async (couponCode: string): Promise<CartResult> => {
  * @param price - The numeric price to format
  * @returns Formatted price string with currency symbol
  *
+ * @remarks Security: the result is plain display text assembled from shop config (currency
+ * symbol and separators, which originate from the backend). Render it with `textContent`, not
+ * `innerHTML`, to avoid turning malformed config into an injection sink at the call site.
+ *
  * @throws Error if shop config is not initialized (call `initializeCart()` first)
  *
  * @example

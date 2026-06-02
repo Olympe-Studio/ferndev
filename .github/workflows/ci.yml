@@ -5,13 +5,17 @@ on:
     branches: [master]
   pull_request:
 
+# Least privilege: CI only needs to read the repository.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
 
@@ -38,3 +42,11 @@ jobs:
 
       - name: Enforce bundle size budgets
         run: bun run size
+
+      # Visibility for all advisories (incl. dev-only transitive ones); does not fail the build.
+      - name: Dependency audit (report)
+        run: bun audit || true
+
+      # Hard floor: fail the build on any critical advisory (currently none).
+      - name: Dependency audit (fail on critical)
+        run: bun audit --audit-level=critical

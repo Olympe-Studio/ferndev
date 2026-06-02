@@ -87,6 +87,23 @@ here. The packages are versioned in lockstep and follow [Semantic Versioning](ht
   mocked: happy paths stub `fetch`; the actions' defensive `catch` blocks are exercised via
   `mock.module('@ferndev/core', …)` forcing `callAction` to reject.
 
+### Security
+
+- **`@ferndev/core`**: removed the tautological same-origin guard (and its `403`
+  "Cross-origin action requests not allowed" result). It compared `new URL(window.location.href).origin`
+  against `window.origin`, which are always equal, so it added no protection (and broke
+  legitimate calls in opaque-origin/sandboxed contexts). CSRF protection is unchanged and rests
+  on the server-validated nonce plus the request always targeting the current same-origin URL.
+- **`@ferndev/woo`**: documented that `formatPrice` returns plain display text (built from
+  backend-supplied currency symbol/separators) — render with `textContent`, not `innerHTML`.
+- Added **security regression tests**: CSRF-nonce transmission, same-origin request target, and
+  prototype-pollution resistance against malicious cart/config responses, plus a `formatPrice`
+  ReDoS time-bound.
+- **CI/CD hardening**: GitHub Actions pinned to commit SHAs (no mutable tags), least-privilege
+  `permissions: contents: read` on CI, and a `bun audit` report step plus a critical-severity
+  hard gate. Verified that no vulnerable dependency ships — the only runtime dep, `nanostores`,
+  is clean; all current advisories are dev-toolchain-only.
+
 ### Migration
 
 1. Add a type argument to each call: `callAction<MyType>('action')`, or narrow `result.data`.

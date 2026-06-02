@@ -65,13 +65,6 @@ describe("callAction", () => {
     expect(sent.get("args[_nonce]")).toBe("n1")
   })
 
-  test("rejects cross-origin requests with 403", async () => {
-    browser("http://evil.example/", ORIGIN)
-    const res = await callAction("x")
-    expect(isErr(res)).toBe(true)
-    if (isErr(res)) expect(res.error.status).toBe(403)
-  })
-
   test("errors with 400 outside the browser", async () => {
     const res = await callAction("x")
     expect(isErr(res)).toBe(true)
