@@ -81,10 +81,10 @@ export interface InitialStateResponse {
 
 export interface AddToCartArgs {
   productId: number
-  quantity?: number
-  variationId?: number
-  variation?: CartItemVariation
-  cartItemKey?: string
+  quantity?: number | undefined
+  variationId?: number | undefined
+  variation?: CartItemVariation | undefined
+  cartItemKey?: string | undefined
 }
 
 export interface UpdateCartItemArgs {
@@ -96,9 +96,9 @@ export interface UpdateCartItemArgs {
 
 export interface BatchAddToCartItem {
   productId: number
-  quantity?: number
-  variationId?: number
-  variation?: CartItemVariation
+  quantity?: number | undefined
+  variationId?: number | undefined
+  variation?: CartItemVariation | undefined
 }
 
 export interface BatchAddToCartArgs {
