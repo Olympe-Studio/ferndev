@@ -1,14 +1,30 @@
 /// <reference lib="dom" />
 
-type ActionResult<T = any> = Promise<{
-  data?: T;
+/**
+ * Result envelope returned by every {@link callAction} request.
+ *
+ * @template TData - The expected response data type. Defaults to `unknown`, which forces
+ * the caller to pass a type argument (`callAction<MyType>(...)`) or narrow before use.
+ */
+export interface ActionResult<TData = unknown> {
+  data?: TData;
   error?: { message: string; status?: number };
   status: 'ok' | 'error';
-}>;
+}
 
-type ActionArgs = Record<string, any> | FormData;
+/**
+ * Arguments accepted by {@link callAction}. Either a plain object or a `FormData` instance.
+ *
+ * The args type is bound to `object | FormData` (not `Record<string, unknown>`) so that a
+ * consumer's own `interface` types are accepted — interfaces lack an implicit index
+ * signature and would otherwise be rejected by a `Record` constraint.
+ */
+export type ActionArgs = Record<string, unknown> | FormData;
 
-interface CallActionOptions {
+/**
+ * Optional configuration for {@link callAction}.
+ */
+export interface CallActionOptions {
   /**
    * Request timeout in milliseconds.
    * @default 30000 (30 seconds)
@@ -19,51 +35,44 @@ interface CallActionOptions {
 /**
  * Makes an authenticated action request to the Fern PHP framework.
  *
- * This function handles communication between the frontend and Fern backend actions,
- * automatically adding CSRF protection via nonces and setting appropriate headers.
+ * Handles communication between the frontend and Fern backend actions, automatically
+ * adding CSRF protection via nonces and setting appropriate headers.
  *
- * @template T - The expected response data type
- * @param {string} action - The action name to call (e.g., 'addToCart', 'login')
- * @param {ActionArgs} args - The action arguments as an object or FormData instance
- * @param {string} nonce - CSRF nonce token for security (obtain from backend)
- * @param {CallActionOptions} options - Optional configuration (timeout, etc.)
- * @returns {ActionResult<T>} Promise resolving to { data, status, error }
+ * @template TData - The expected response data type (defaults to `unknown`).
+ * @template TArgs - The args shape; supply it to type-check the payload at the call site.
+ * @param action - The action name to call (e.g. `'addToCart'`, `'login'`).
+ * @param args - The action arguments as an object or `FormData` instance.
+ * @param nonce - CSRF nonce token for security (obtain from backend).
+ * @param options - Optional configuration (timeout, etc.).
+ * @returns Promise resolving to `{ data?, error?, status }`.
  *
  * @example
  * ```typescript
- * // Simple object arguments
- * const result = await callAction<{ cart: Cart }>(
+ * interface AddToCartArgs { product_id: number; quantity: number }
+ *
+ * const result = await callAction<{ cart: Cart }, AddToCartArgs>(
  *   'addToCart',
  *   { product_id: 123, quantity: 2 },
- *   getNonce()
+ *   getNonce(),
  * );
  *
  * if (result.status === 'ok') {
- *   console.log(result.data.cart);
+ *   console.log(result.data?.cart);
  * } else {
- *   console.error(result.error.message);
+ *   console.error(result.error?.message);
  * }
- *
- * // Using FormData for file uploads
- * const formData = new FormData();
- * formData.append('file', fileInput.files[0]);
- * const uploadResult = await callAction('uploadFile', formData, getNonce());
- *
- * // With custom timeout
- * const slowResult = await callAction(
- *   'generateReport',
- *   { reportType: 'annual' },
- *   getNonce(),
- *   { timeout: 60000 } // 60 seconds
- * );
  * ```
  */
-export const callAction = async <T>(
+export async function callAction<
+  TData = unknown,
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- intentional: TArgs lets callers type-check the args payload via callAction<Data, Args>
+  TArgs extends object | FormData = Record<string, unknown>,
+>(
   action: string,
-  args: ActionArgs = {},
-  nonce: string = '',
-  options: CallActionOptions = {}
-): ActionResult<T> => {
+  args?: TArgs,
+  nonce = '',
+  options: CallActionOptions = {},
+): Promise<ActionResult<TData>> {
   if (typeof window === 'undefined') {
     return {
       error: { message: 'you can only call actions from the browser', status: 400 },
@@ -82,12 +91,14 @@ export const callAction = async <T>(
 
   // Setup timeout abort controller
   const controller = new AbortController();
-  const timeout = options.timeout || 30000; // Default 30 seconds
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeout = options.timeout ?? 30000; // Default 30 seconds
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
   try {
     let body: string | FormData;
-    let headers: Record<string, string> = {};
+    const headers: Record<string, string> = {};
 
     if (args instanceof FormData) {
       // Add action and nonce to FormData at top level and in args
@@ -98,17 +109,9 @@ export const callAction = async <T>(
       }
       body = args;
     } else {
-      // Defensive type checking to prevent invalid args
-      if (typeof args === 'string') {
-        console.error('[Fern] callAction received string instead of object:', args);
-        args = {};
-      } else if (args === null || args === undefined) {
-        console.warn('[Fern] callAction received null/undefined, using empty object');
-        args = {};
-      }
-
       // Include _nonce in both top level and inside args
-      const argsWithNonce = nonce ? { ...args, _nonce: nonce } : args;
+      const objectArgs = (args ?? {}) as Record<string, unknown>;
+      const argsWithNonce = nonce ? { ...objectArgs, _nonce: nonce } : objectArgs;
       body = JSON.stringify({ action, args: argsWithNonce, _nonce: nonce });
       headers['Content-Type'] = 'application/json';
     }
@@ -130,9 +133,9 @@ export const callAction = async <T>(
     }
 
     const contentType = res.headers.get('content-type');
-    const data = contentType?.includes('application/json')
+    const data = (contentType?.includes('application/json')
       ? await res.json()
-      : await res.text();
+      : await res.text()) as TData;
 
     return { data, status: 'ok' };
   } catch (err) {
@@ -150,7 +153,10 @@ export const callAction = async <T>(
     }
 
     // Preserve HTTP status from response errors
-    const status = (err as any).status || 500;
+    const status =
+      err instanceof Error && 'status' in err && typeof err.status === 'number'
+        ? err.status
+        : 500;
     const message = err instanceof Error ? err.message : 'Request failed';
 
     return {
@@ -158,4 +164,33 @@ export const callAction = async <T>(
       status: 'error',
     };
   }
-};
+}
+
+/**
+ * Binds an action name to its argument and response types once, returning a fully typed
+ * caller. The recommended way to consume actions: the action ↔ types binding lives in a
+ * single local declaration, and every call site is then checked with no per-call generics
+ * and no string to mistype.
+ *
+ * @template TArgs - The argument type for this action.
+ * @template TData - The response data type for this action.
+ * @param action - The action name to bind.
+ * @returns A typed function `(args?, nonce?, options?) => Promise<ActionResult<TData>>`.
+ *
+ * @example
+ * ```typescript
+ * const addToCart = defineAction<{ product_id: number; quantity: number }, { cart: Cart }>('addToCart');
+ *
+ * const result = await addToCart({ product_id: 123, quantity: 2 });
+ * result.data?.cart; // typed
+ * ```
+ */
+export function defineAction<
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- intentional: TArgs binds the action's args type for callers
+  TArgs extends object | FormData = Record<string, unknown>,
+  TData = unknown,
+>(
+  action: string,
+): (args?: TArgs, nonce?: string, options?: CallActionOptions) => Promise<ActionResult<TData>> {
+  return (args, nonce, options) => callAction<TData, TArgs>(action, args, nonce, options);
+}

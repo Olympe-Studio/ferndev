@@ -1,5 +1,5 @@
 import { callAction } from "@ferndev/core"
-import { $cart, $cartIsLoading, $shopConfig, incrementLoadingState, decrementLoadingState } from "./stores"
+import { $cart, $shopConfig, incrementLoadingState, decrementLoadingState } from "./stores"
 import { AddToCartArgs, Cart, InitialStateResponse, UpdateCartItemArgs, BatchAddToCartArgs, BatchAddToCartResponse } from "./types"
 
 type CartActionResult = Awaited<ReturnType<typeof callAction<{ cart: Cart }>>>
@@ -11,16 +11,17 @@ const DEFAULT_CART: Cart = {
   item_count: 0,
   tax_total: "0",
   needs_shipping: false,
-  shipping_total: "0"
+  shipping_total: "0",
+  meta_data: {}
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null
 }
 
 function isValidCart(cart: unknown): cart is Cart {
-  if (!cart || typeof cart !== 'object') return false
-  const c = cart as Record<string, unknown>
-  return (
-    Array.isArray(c.items) &&
-    typeof c.item_count === 'number'
-  )
+  const c = asRecord(cart)
+  return c !== null && Array.isArray(c['items']) && typeof c['item_count'] === 'number'
 }
 
 // Validate responses before touching the cart store to avoid writing undefined data on backend errors.
@@ -30,28 +31,28 @@ function getCartFromResult(actionName: string, result: CartActionResult): Cart |
     return null
   }
 
-  const data = result.data as any
-
-  if (!data || typeof data !== 'object') {
-    console.error(`[Fern Woo] ${actionName} returned invalid response payload`, data)
+  const payload = asRecord(result.data)
+  if (!payload) {
+    console.error(`[Fern Woo] ${actionName} returned invalid response payload`, result.data)
     return null
   }
 
-  if ('status' in data && data.status === 'error') {
-    const message = (data as any).error?.message ?? (data as any).message ?? 'Unknown error'
-    console.error(`[Fern Woo] ${actionName} failed: ${message}`)
+  if (payload['status'] === 'error') {
+    const nested = asRecord(payload['error'])
+    const message = nested?.['message'] ?? payload['message'] ?? 'Unknown error'
+    console.error(`[Fern Woo] ${actionName} failed: ${typeof message === 'string' ? message : 'Unknown error'}`)
     return null
   }
 
-  if (!('cart' in data) || data.cart == null) {
-    console.error(`[Fern Woo] ${actionName} response missing cart data`, data)
+  const cart = payload['cart']
+  if (cart == null) {
+    console.error(`[Fern Woo] ${actionName} response missing cart data`, result.data)
     return null
   }
 
-  const cart = data.cart
   if (!isValidCart(cart)) {
     console.error(`[Fern Woo] ${actionName} returned malformed cart data`, cart)
-    return { ...DEFAULT_CART, ...cart }
+    return { ...DEFAULT_CART, ...(cart as Partial<Cart>) }
   }
 
   return cart
@@ -61,7 +62,7 @@ function updateCartStore(actionName: string, result: CartActionResult, { clone }
   const cart = getCartFromResult(actionName, result)
   if (!cart) return
 
-  $cart.set(clone ? JSON.parse(JSON.stringify(cart)) : cart)
+  $cart.set(clone ? (JSON.parse(JSON.stringify(cart)) as Cart) : cart)
 }
 
 /**
@@ -80,6 +81,7 @@ export const initializeCart = async () => {
   incrementLoadingState()
   try {
     const result = await callAction<InitialStateResponse>('getInitialState')
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime guard: backend may violate the typed InitialStateResponse contract
     if (result.status === 'ok' && result.data?.cart && result.data?.config) {
       $cart.set(result.data.cart)
       $shopConfig.set(result.data.config)
@@ -258,7 +260,7 @@ export const updateCartItem = async ({
   try {
     // If only updating quantity (simple or variable product)
     if (quantity && !variationId && !variation) {
-      return updateQuantity(cartItemKey, quantity)
+      return await updateQuantity(cartItemKey, quantity)
     }
 
     // If updating variation or both quantity and variation
@@ -475,12 +477,13 @@ export function formatPrice(price: number): string {
   const config = $shopConfig.get();
 
   // Defensive check: config must be initialized with required properties
-  if (!config ||
-      typeof config.price_decimals === 'undefined' ||
-      typeof config.decimal_separator === 'undefined' ||
-      typeof config.thousand_separator === 'undefined' ||
-      typeof config.currency_symbol === 'undefined' ||
-      typeof config.currency_position === 'undefined') {
+  if (
+    typeof config.price_decimals === 'undefined' ||
+    typeof config.decimal_separator === 'undefined' ||
+    typeof config.thousand_separator === 'undefined' ||
+    typeof config.currency_symbol === 'undefined' ||
+    typeof config.currency_position === 'undefined'
+  ) {
     throw new Error('[Fern Woo] Shop config not initialized. Call initializeCart() before using formatPrice()');
   }
 

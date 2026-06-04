@@ -24,14 +24,10 @@ export interface CartItem {
   variation: CartItemVariation
   image: string | null
   productData?: CartItemData | VariableProductData
-  meta_data: {
-    [key: string]: any
-  }
+  meta_data: Record<string, unknown>
 }
 
-export interface CartItemVariation {
-  [key: string]: string
-}
+export type CartItemVariation = Record<string, string>
 
 export interface CartItemData {
   variations: {
@@ -42,16 +38,12 @@ export interface CartItemData {
     max_quantity: number | ""
     sku: string
     is_in_stock: boolean
-    meta_data: {
-      [key: string]: any
-    }
+    meta_data: Record<string, unknown>
   }[]
-  attributes: {
-    [key: string]: {
-      name: string
-      options: string[]
-    }
-  }
+  attributes: Record<string, {
+    name: string
+    options: string[]
+  }>
 }
 
 export interface Variation {
@@ -62,9 +54,7 @@ export interface Variation {
   max_quantity: number | "";
   sku: string;
   is_in_stock: boolean;
-  meta_data: {
-    [key: string]: any;
-  };
+  meta_data: Record<string, unknown>;
 }
 
 export interface VariableProductData {
@@ -77,8 +67,11 @@ export interface Cart {
   total: string
   item_count: number
   tax_total: string
+  tax_total_numeric?: number
   needs_shipping: boolean
   shipping_total: string
+  shipping_total_numeric?: number
+  meta_data: Record<string, unknown>
 }
 
 export interface InitialStateResponse {
@@ -135,7 +128,7 @@ type DimensionUnit = 'cm' | 'm' | 'mm' | 'in' | 'yd';
 type StockFormat = 'no_amount' | 'low_amount' | 'always';
 type ThumbnailCropping = '1:1' | 'custom' | 'uncropped';
 
-export type WooCommerceConfig = {
+export interface WooCommerceConfig {
   // Currency and Price Settings
   currency: string;
   currency_symbol: string;
@@ -205,4 +198,4 @@ export type WooCommerceConfig = {
       height: number;
     };
   };
-};
+}
