@@ -40,14 +40,13 @@
   "devDependencies": {
     "@ferndev/core": "^2.0.0",
     "@types/bun": "^1.3.2",
+    "nanostores": "^1.5.4",
     "vite": "^6.4.1",
     "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
     "typescript": "^5.8.2",
-    "@ferndev/core": "^2.0.0"
-  },
-  "dependencies": {
-    "nanostores": "^0.11.4"
+    "@ferndev/core": "^2.0.0",
+    "nanostores": "^0.11.4 || ^1.0.0"
   }
 }
