@@ -1,11 +1,20 @@
 {
   "name": "@ferndev/woo",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "WooCommerce actions to work with the Fern Framework",
-  "main": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Olympe-Studio/ferndev.git",
+    "directory": "packages/woo"
+  },
+  "main": "./dist/fern_woo.umd.cjs",
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
   "license": "MIT",
   "private": false,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "module": "./dist/fern_woo.js",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -15,29 +24,34 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/fern_woo.js",
-      "require": "./dist/fern_woo.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/fern_woo.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/fern_woo.umd.cjs"
+      }
     }
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
     "prepack": "bun run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@ferndev/core": "^2.0.0",
+    "@ferndev/core": "^2.1.0",
     "@types/bun": "^1.3.2",
+    "nanostores": "^1.5.4",
     "vite": "^6.4.1",
     "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
     "typescript": "^5.8.2",
-    "@ferndev/core": "^2.0.0"
-  },
-  "dependencies": {
-    "nanostores": "^0.11.4"
+    "@ferndev/core": "^2.0.0",
+    "nanostores": "^0.11.4 || ^1.0.0"
   }
 }

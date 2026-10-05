@@ -1,0 +1,14 @@
+[
+  {
+    "name": "@ferndev/core (ESM, gzip)",
+    "path": "packages/core/dist/fern_core.js",
+    "limit": "1 kB",
+    "gzip": true
+  },
+  {
+    "name": "@ferndev/woo (ESM, gzip, incl. deps)",
+    "path": "packages/woo/dist/fern_woo.js",
+    "limit": "3.5 kB",
+    "gzip": true
+  }
+]

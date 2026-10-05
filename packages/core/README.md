@@ -69,7 +69,7 @@ class HomePageController extends Singleton implements Controller {
 ### 2. Call from Client (TypeScript)
 
 ```ts
-import { callAction, defineAction } from '@ferndev/core';
+import { callAction, defineAction, isOk } from '@ferndev/core';
 
 interface SayHelloArgs { name: string }
 
@@ -81,18 +81,19 @@ const sayHello = async (name: string, nonce: string) => {
     nonce,
   );
 
+  // ActionResult is a discriminated union — narrow on `status` (or use isOk/isErr)
   if (result.status === 'error') {
-    console.error('Failed:', result.error?.message);
+    console.error('Failed:', result.error.message);
     return;
   }
 
-  console.log(result.data?.message); // "Hello, John!"
+  console.log(result.data.message); // "Hello, John!" — `data` is available, no `?.`
 };
 
 // Recommended: bind the action's types once, then call it cleanly everywhere
 const sayHelloAction = defineAction<SayHelloArgs, { message: string }>('sayHello');
 const result = await sayHelloAction({ name: 'John' }, getNonce());
-console.log(result.data?.message);
+if (isOk(result)) console.log(result.data.message);
 ```
 
 ## API Reference
@@ -130,13 +131,15 @@ interface CallActionOptions {
 ```typescript
 Promise<ActionResult<TData>>
 
-interface ActionResult<TData = unknown> {
-  data?: TData;                // Response data (typed)
-  error?: {                    // Error details
-    message: string;
-    status?: number;           // HTTP status code
-  };
-  status: 'ok' | 'error';      // Request status
+// Discriminated union on `status`. Narrow before reading `data` / `error`,
+// or use the isOk(result) / isErr(result) type guards.
+type ActionResult<TData = unknown> =
+  | { status: 'ok'; data: TData }
+  | { status: 'error'; error: ActionError };
+
+interface ActionError {
+  message: string;
+  status?: number;             // HTTP status code (e.g. 403, 408, 500)
 }
 ```
 
@@ -156,7 +159,7 @@ interface CartResponse  { cart: Cart }
 const addToCart = defineAction<AddToCartArgs, CartResponse>('addToCart');
 
 const result = await addToCart({ product_id: 123, quantity: 2 }); // ✅ args + data typed
-result.data?.cart;                                                // ✅ CartResponse
+if (result.status === 'ok') result.data.cart;                     // ✅ CartResponse
 await addToCart({ product_id: 123 });                             // ❌ missing quantity
 ```
 
@@ -192,7 +195,7 @@ const result = await callAction('uploadFile', formData, nonce);
 const result = await callAction('updateUser', { id: 123 }, nonce);
 
 if (result.status === 'error') {
-  switch (result.error?.status) {
+  switch (result.error.status) {
     case 400:
       console.error('Bad request:', result.error.message);
       break;
@@ -270,7 +273,7 @@ interface GetUserArgs { id: number }
 const result = await callAction<User, GetUserArgs>('getUser', { id: 123 }, nonce);
 
 if (result.status === 'ok') {
-  console.log(result.data?.name); // ✅ User, type-safe
+  console.log(result.data.name); // ✅ User, type-safe — `data` is non-optional here
 }
 
 // Without a type argument, result.data is `unknown` and must be narrowed:
@@ -278,8 +281,8 @@ const raw = await callAction('getUser', { id: 123 }, nonce);
 // raw.data.name → ❌ 'raw.data' is of type 'unknown'
 ```
 
-The exported types `ActionResult`, `ActionArgs`, and `CallActionOptions` are available for
-your own signatures:
+The exported types `ActionResult`, `ActionError`, `ActionArgs`, and `CallActionOptions` are
+available for your own signatures, alongside the `isOk` / `isErr` guards:
 
 ```typescript
 import type { ActionResult, ActionArgs, CallActionOptions } from '@ferndev/core';
