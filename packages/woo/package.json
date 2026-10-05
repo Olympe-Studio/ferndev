@@ -2,6 +2,11 @@
   "name": "@ferndev/woo",
   "version": "2.1.0",
   "description": "WooCommerce actions to work with the Fern Framework",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Olympe-Studio/ferndev.git",
+    "directory": "packages/woo"
+  },
   "main": "./dist/fern_woo.umd.cjs",
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
   "license": "MIT",

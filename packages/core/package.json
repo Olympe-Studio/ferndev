@@ -2,6 +2,11 @@
   "name": "@ferndev/core",
   "version": "2.1.0",
   "description": "Core browser features to work with the Fern Framework",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Olympe-Studio/ferndev.git",
+    "directory": "packages/core"
+  },
   "main": "./dist/fern_core.umd.cjs",
   "private": false,
   "engines": {
