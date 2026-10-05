@@ -2,13 +2,23 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": [
     "@changesets/changelog-github",
-    { "repo": "Olympe-Studio/ferndev" }
+    {
+      "repo": "Olympe-Studio/ferndev"
+    }
   ],
   "commit": false,
-  "fixed": [["@ferndev/core", "@ferndev/woo"]],
+  "fixed": [
+    [
+      "@ferndev/core",
+      "@ferndev/woo"
+    ]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": [],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@ferndev/woo",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "WooCommerce actions to work with the Fern Framework",
   "main": "./dist/fern_woo.umd.cjs",
   "author": "Tanguy Magnaudet <tanguy@olympe-studio.xyz>",
@@ -38,7 +38,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@ferndev/core": "^2.0.0",
+    "@ferndev/core": "^2.1.0",
     "@types/bun": "^1.3.2",
     "nanostores": "^1.5.4",
     "vite": "^6.4.1",
