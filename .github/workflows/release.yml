@@ -23,7 +23,8 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          # npm trusted publishing (OIDC) needs npm >= 11.5.1, which ships with Node 24.
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
