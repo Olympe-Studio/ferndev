@@ -12,3 +12,8 @@ coveragePathIgnorePatterns = [
   "**/*.config.*",
   "**/types.ts"
 ]
+
+# Isolated installs: hoisted, ajv-draft-04 (peer ajv ^8) landed beside eslint's ajv 6 at the
+# root and broke `vite build` on every fresh install (CI included).
+[install]
+linker = "isolated"
