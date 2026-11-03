@@ -1,4 +1,4 @@
-import { callAction, ActionResult } from "@ferndev/core"
+import { callAction, ActionError, ActionResult } from "@ferndev/core"
 import { $cart, $shopConfig, incrementLoadingState, decrementLoadingState } from "./stores"
 import {
   AddToCartArgs,
@@ -51,13 +51,32 @@ function payloadError(payload: Record<string, unknown>): WooError {
 }
 
 /**
+ * Map a failed request into a {@link WooError}, keeping the backend's `code` and the HTTP status.
+ */
+function requestError(error: ActionError): WooError {
+  const wooError: WooError = { message: error.message }
+  if (error.code !== undefined) wooError.code = error.code
+  if (error.status !== undefined) wooError.httpStatus = error.status
+  return wooError
+}
+
+/**
+ * The reason of the first item a batch refused, falling back to the payload's own message.
+ */
+function batchError(payload: Record<string, unknown>, results: BatchItemResult[] | undefined): WooError {
+  const refused = asRecord(results?.find(item => !item.success))
+  const hasReason = refused !== null && typeof refused['message'] === 'string' && refused['message'] !== ''
+  return payloadError(hasReason ? refused : payload)
+}
+
+/**
  * Map a core {@link ActionResult} into a normalized {@link CartResult}, updating the `$cart`
  * store only when the operation genuinely succeeded. Business failures (e.g. out-of-stock)
  * surface as `{ status: 'error', error }` instead of being swallowed.
  */
 function resolveCart(result: ActionResult<{ cart: Cart }>, { clone }: { clone?: boolean } = {}): CartResult {
   if (result.status === 'error') {
-    return { status: 'error', error: { message: result.error.message } }
+    return { status: 'error', error: requestError(result.error) }
   }
 
   const payload = asRecord(result.data)
@@ -80,12 +99,14 @@ function resolveCart(result: ActionResult<{ cart: Cart }>, { clone }: { clone?: 
 }
 
 /**
- * Map a batch response into a {@link BatchCartResult}, preserving per-item `results`. A partial
- * failure still updates the cart with the items that succeeded but reports `status: 'error'`.
+ * Map a batch response into a {@link BatchCartResult}, preserving per-item `results`. When the
+ * backend reports `success: false`, the cart is still refreshed and the result is
+ * `status: 'error'`, carrying the reason of the first refused item. Every refused item keeps
+ * its own `message` and `code` in `results`, including in an `ok` batch where only some failed.
  */
 function resolveBatch(result: ActionResult<BatchAddToCartResponse>, { clone }: { clone?: boolean } = {}): BatchCartResult {
   if (result.status === 'error') {
-    return { status: 'error', error: { message: result.error.message } }
+    return { status: 'error', error: requestError(result.error) }
   }
 
   const payload = asRecord(result.data)
@@ -103,7 +124,7 @@ function resolveBatch(result: ActionResult<BatchAddToCartResponse>, { clone }: {
   $cart.set(clone ? (JSON.parse(JSON.stringify(rawCart)) as Cart) : rawCart)
 
   if (payload['success'] === false) {
-    return { status: 'error', error: payloadError(payload), results }
+    return { status: 'error', error: batchError(payload, results), results }
   }
 
   return { status: 'ok', cart: rawCart, results: results ?? [] }
@@ -127,7 +148,7 @@ export const initializeCart = async (): Promise<InitialStateResult> => {
   try {
     const result = await callAction<InitialStateResponse>('getInitialState')
     if (result.status === 'error') {
-      return { status: 'error', error: { message: result.error.message } }
+      return { status: 'error', error: requestError(result.error) }
     }
 
     const payload = asRecord(result.data)

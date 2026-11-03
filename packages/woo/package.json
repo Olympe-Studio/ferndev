@@ -1,6 +1,6 @@
 {
   "name": "@ferndev/woo",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "WooCommerce actions to work with the Fern Framework",
   "repository": {
     "type": "git",
@@ -43,7 +43,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@ferndev/core": "^2.1.0",
+    "@ferndev/core": "^2.1.1",
     "@types/bun": "^1.3.2",
     "nanostores": "^1.5.4",
     "vite": "^6.4.1",

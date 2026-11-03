@@ -1,5 +1,11 @@
 # @ferndev/core
 
+## 2.1.1
+
+### Patch Changes
+
+- A failed request now carries what the backend said. On a non-2xx response, `callAction` reads the JSON body and returns `error.message` and the new `error.code` from it (for example `{ message: 'You cannot add "ML-040" to the cart because the product is out of stock.', status: 400, code: 'out_of_stock' }`). Without a JSON `message`, the message stays `HTTP error <status>`.
+
 ## 2.1.0
 
 ### Minor Changes

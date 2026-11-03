@@ -138,8 +138,9 @@ type ActionResult<TData = unknown> =
   | { status: 'error'; error: ActionError };
 
 interface ActionError {
-  message: string;
+  message: string;             // for a non-2xx response: the JSON body's `message`, else `HTTP error <status>`
   status?: number;             // HTTP status code (e.g. 403, 408, 500)
+  code?: string;               // the JSON body's `code`, when the backend sent one (e.g. 'out_of_stock')
 }
 ```
 

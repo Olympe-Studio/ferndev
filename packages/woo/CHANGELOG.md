@@ -1,5 +1,13 @@
 # @ferndev/woo
 
+## 2.1.1
+
+### Patch Changes
+
+- `addToCart` and `batchAddToCart` report the reason WooCommerce gave for refusing a product. `WooError` gains `httpStatus`, and keeps the backend's `message` and `code` (`out_of_stock`, `insufficient_stock`, `invalid_quantity`, `variation_required`, `not_purchasable`, `add_failed`) for a failed request. When no item of a batch was added, the error is the first refused item's reason; every refused item keeps its `message` and `code` in `results` (`BatchItemResult.code`). Needs `fern/core` 2.0.4 on the PHP side and `@ferndev/core` 2.1.1.
+- Updated dependencies
+  - @ferndev/core@2.1.1
+
 ## 2.1.0
 
 ### Minor Changes

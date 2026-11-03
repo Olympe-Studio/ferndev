@@ -79,6 +79,40 @@ describe("callAction", () => {
     if (isErr(res)) expect(res.error.status).toBe(500)
   })
 
+  test("an HTTP error keeps the default message when the body is not JSON", async () => {
+    browser()
+    respond("<html>Bad gateway</html>", { status: 502 })
+    const res = await callAction("x")
+    expect(res).toEqual({ status: "error", error: { message: "HTTP error 502", status: 502 } })
+  })
+
+  test("an HTTP error carries the message and code of its JSON body", async () => {
+    browser()
+    respond(
+      JSON.stringify({ success: false, message: "Out of stock", code: "out_of_stock" }),
+      { status: 400, ...JSON_HEADERS },
+    )
+    const res = await callAction("addToCart")
+    expect(res).toEqual({
+      status: "error",
+      error: { message: "Out of stock", status: 400, code: "out_of_stock" },
+    })
+  })
+
+  test("an HTTP error whose JSON body has no message falls back to the default message", async () => {
+    browser()
+    respond(JSON.stringify({ success: false, message: "", code: 7 }), { status: 400, ...JSON_HEADERS })
+    const res = await callAction("x")
+    expect(res).toEqual({ status: "error", error: { message: "HTTP error 400", status: 400 } })
+  })
+
+  test("an HTTP error whose JSON body is not an object falls back to the default message", async () => {
+    browser()
+    respond(JSON.stringify(["Out of stock"]), { status: 409, ...JSON_HEADERS })
+    const res = await callAction("x")
+    expect(res).toEqual({ status: "error", error: { message: "HTTP error 409", status: 409 } })
+  })
+
   test("maps an aborted request to 408", async () => {
     browser()
     // @ts-expect-error - reject with an AbortError-shaped error

@@ -237,20 +237,31 @@ const count = useStore(\$cartItemsCount);
 
 ## Error Handling
 
-All cart functions throw descriptive errors with context:
+Cart functions never throw: a failure comes back as `{ status: 'error', error: WooError }`.
 
 ```typescript
-try {
-  await addToCart({ productId: 123, quantity: 2 });
-} catch (error) {
-  // Error messages are descriptive:
-  // "Failed to add product 123 to cart: Out of stock"
-  console.error(error.message);
-  
-  // Original error preserved in .cause
-  console.error(error.cause);
+interface WooError {
+  message: string;     // the backend's reason, e.g. the one WooCommerce gave for a refused product
+  code?: string;       // machine-readable reason, when the backend sends one
+  httpStatus?: number; // HTTP status of a request that failed as a whole (non-2xx, timeout)
+}
+
+const result = await addToCart({ productId: 123, quantity: 2 });
+
+if (result.status === 'error') {
+  // { message: 'You cannot add "ML-040" to the cart because the product is out of stock.',
+  //   code: 'out_of_stock', httpStatus: 400 }
+  showToast(result.error.message);
 }
 ```
+
+A refused add sends one of these codes: `out_of_stock`, `insufficient_stock`, `invalid_quantity`,
+`variation_required`, `not_purchasable`, `add_failed`.
+
+`batchAddToCart()` reports every item in `results`; a refused item carries its own `message` and
+`code`. When no item was added, the result is `status: 'error'` and `error` is the first refused
+item's reason. When only some items were refused, the result stays `status: 'ok'`: check
+`results` for the items with `success: false`.
 
 ## Concurrent Operations
 

@@ -2,10 +2,63 @@
 
 /**
  * Error payload carried by a failed {@link ActionResult}.
+ *
+ * For a non-2xx response, `message` and `code` come from the JSON body the backend sent
+ * (`{ message, code }`); `message` falls back to `HTTP error <status>` when the body has none.
  */
 export interface ActionError {
   message: string;
   status?: number;
+  /** Machine-readable reason from the backend, when it sent one (e.g. `'out_of_stock'`). */
+  code?: string;
+}
+
+/**
+ * Raised inside {@link callAction} for a non-2xx response, carrying what the backend said.
+ */
+class ActionHttpError extends Error {
+  readonly status: number;
+  readonly code: string | undefined;
+
+  constructor(message: string, status: number, code: string | undefined) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+
+  toActionError(): ActionError {
+    return this.code === undefined
+      ? { message: this.message, status: this.status }
+      : { message: this.message, status: this.status, code: this.code };
+  }
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/**
+ * The JSON object a response body holds, or an empty object when it holds none.
+ */
+async function jsonBody(res: Response): Promise<Record<string, unknown>> {
+  try {
+    const body: unknown = JSON.parse(await res.text());
+    return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Build the error of a non-2xx response from its JSON body, if it has one.
+ */
+async function httpError(res: Response): Promise<ActionHttpError> {
+  const fields = await jsonBody(res);
+  return new ActionHttpError(
+    nonEmptyString(fields['message']) ?? `HTTP error ${res.status}`,
+    res.status,
+    nonEmptyString(fields['code']),
+  );
 }
 
 /**
@@ -159,9 +212,7 @@ export async function callAction<
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const httpError = new Error(`HTTP error ${res.status}`) as Error & { status: number };
-      httpError.status = res.status;
-      throw httpError;
+      throw await httpError(res);
     }
 
     const contentType = res.headers.get('content-type');
@@ -172,6 +223,10 @@ export async function callAction<
     return { data, status: 'ok' };
   } catch (err) {
     clearTimeout(timeoutId);
+
+    if (err instanceof ActionHttpError) {
+      return { error: err.toActionError(), status: 'error' };
+    }
 
     // Handle abort errors (timeout)
     if (err instanceof Error && err.name === 'AbortError') {
