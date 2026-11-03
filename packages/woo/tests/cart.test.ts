@@ -74,6 +74,25 @@ describe("addToCart", () => {
     respondJson({}, 500)
     const res = await addToCart({ productId: 3 })
     expect(res.status).toBe("error")
+    if (res.status === "error") expect(res.error).toEqual({ message: "HTTP error 500", httpStatus: 500 })
+  })
+
+  test("a refused add (HTTP 400) surfaces the backend's reason, code and status", async () => {
+    respondJson({
+      success: false,
+      message: 'You cannot add "ML-040" to the cart because the product is out of stock.',
+      code: "out_of_stock",
+    }, 400)
+    const res = await addToCart({ productId: 4 })
+    expect(res).toEqual({
+      status: "error",
+      error: {
+        message: 'You cannot add "ML-040" to the cart because the product is out of stock.',
+        code: "out_of_stock",
+        httpStatus: 400,
+      },
+    })
+    expect($cart.get().item_count).toBe(0)
   })
 })
 
@@ -126,6 +145,60 @@ describe("batchAddToCart", () => {
     respondJson({}, 500)
     const res = await batchAddToCart({ items: [{ productId: 1 }] })
     expect(res.status).toBe("error")
+  })
+
+  test("a rejected batch (HTTP 400) carries the backend's message and status", async () => {
+    respondJson({ success: false, message: "Items array is required and cannot be empty" }, 400)
+    const res = await batchAddToCart({ items: [] })
+    expect(res).toEqual({
+      status: "error",
+      error: { message: "Items array is required and cannot be empty", httpStatus: 400 },
+    })
+  })
+
+  test("a batch with no item added carries the reason and code of the first refused item", async () => {
+    respondJson({
+      success: false,
+      message: "No items were added to cart",
+      results: [
+        { index: 0, success: false, message: "Out of stock", code: "out_of_stock", cart_item_key: null },
+        { index: 1, success: false, message: "Not enough stock", code: "insufficient_stock", cart_item_key: null },
+      ],
+      cart: EMPTY,
+    })
+    const res = await batchAddToCart({ items: [{ productId: 1 }, { productId: 2 }] })
+    expect(res.status).toBe("error")
+    if (res.status === "error") {
+      expect(res.error).toEqual({ message: "Out of stock", code: "out_of_stock" })
+      expect(res.results?.[1]?.code).toBe("insufficient_stock")
+    }
+  })
+
+  test("a refused item without a message falls back to the batch message", async () => {
+    respondJson({
+      success: false,
+      message: "No items were added to cart",
+      results: [{ index: 0, success: false, message: "", cart_item_key: null }],
+      cart: EMPTY,
+    })
+    const res = await batchAddToCart({ items: [{ productId: 1 }] })
+    expect(res.status).toBe("error")
+    if (res.status === "error") expect(res.error).toEqual({ message: "No items were added to cart" })
+  })
+
+  test("a batch where only some items were refused stays ok and keeps their reasons", async () => {
+    respondJson({
+      success: true,
+      message: "1 of 2 items added to cart",
+      results: [
+        { index: 0, success: true, message: "Item added to cart", cart_item_key: "k1" },
+        { index: 1, success: false, message: "Out of stock", code: "out_of_stock", cart_item_key: null },
+      ],
+      cart: SAMPLE,
+    })
+    const res = await batchAddToCart({ items: [{ productId: 1 }, { productId: 2 }] })
+    expect(res.status).toBe("ok")
+    if (res.status === "ok") expect(res.results[1]).toMatchObject({ message: "Out of stock", code: "out_of_stock" })
   })
 
   test("non-object payload → invalid response payload error", async () => {

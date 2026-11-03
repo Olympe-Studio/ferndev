@@ -22,7 +22,7 @@
     },
     "packages/core": {
       "name": "@ferndev/core",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "devDependencies": {
         "@types/bun": "^1.3.2",
         "vite": "^6.4.1",
@@ -34,7 +34,7 @@
     },
     "packages/woo": {
       "name": "@ferndev/woo",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "devDependencies": {
         "@ferndev/core": "^2.0.0",
         "@types/bun": "^1.3.2",

@@ -108,7 +108,10 @@ export interface BatchAddToCartArgs {
 export interface BatchItemResult {
   index: number
   success: boolean
+  /** On a refused item, the reason WooCommerce gave, as plain text. */
   message: string
+  /** On a refused item, the backend's machine-readable reason (e.g. `'out_of_stock'`). */
+  code?: string
   cart_item_key: string | null
 }
 
@@ -120,12 +123,17 @@ export interface BatchAddToCartResponse {
 }
 
 /**
- * Error payload carried by a failed cart operation. `code` is the backend's machine-readable
- * reason when available (e.g. `'out_of_stock'`, `'invalid_coupon'`).
+ * Error payload carried by a failed cart operation. `message` is the backend's reason (for a
+ * product the cart refused, the one WooCommerce gave, as plain text). `code` is the
+ * machine-readable reason when available; a refused add sends one of `'out_of_stock'`,
+ * `'insufficient_stock'`, `'invalid_quantity'`, `'variation_required'`, `'not_purchasable'` or
+ * `'add_failed'`. `httpStatus` is the HTTP status of a request that failed as a whole
+ * (non-2xx response, timeout).
  */
 export interface WooError {
   message: string
   code?: string
+  httpStatus?: number
 }
 
 /**
